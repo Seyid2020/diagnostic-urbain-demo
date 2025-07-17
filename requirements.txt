@@ -1,4 +1,6 @@
+
 streamlit
 matplotlib
 numpy
 openai
+requests
