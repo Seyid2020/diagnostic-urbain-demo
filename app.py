@@ -1,6 +1,11 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
+import openai # Importe la librairie OpenAI
+
+# Configure la clé API OpenAI
+# Streamlit va chercher la clé dans les secrets que tu as configurés
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 st.set_page_config(page_title="Diagnostic Urbain IA", layout="wide")
 
@@ -25,8 +30,47 @@ with st.sidebar.form("diagnostic_form"):
     commentaire = st.text_area("Commentaire libre")
     submit = st.form_submit_button("🚀 Générer le diagnostic")
 
+# Fonction pour générer le diagnostic avec OpenAI
+def generate_diagnostic(ville, population, defis, priorites, commentaire):
+    prompt = f"""
+    Génère un diagnostic urbain détaillé (environ 300-500 mots) pour la ville de {ville}.
+    La population estimée est de {population:,} habitants.
+
+    Les principaux défis identifiés sont : {', '.join(defis) if defis else 'aucun défi spécifique mentionné'}.
+    Les priorités de développement sont : {', '.join(priorites) if priorites else 'aucune priorité spécifique mentionnée'}.
+    Commentaire additionnel : {commentaire if commentaire else 'aucun.'}
+
+    Le diagnostic doit être structuré avec des titres et des paragraphes, similaire aux rapports de la Banque Mondiale ou de l'UN-Habitat.
+    Il doit inclure :
+    1. Un résumé exécutif.
+    2. Une section sur le contexte et la démographie.
+    3. Une analyse des défis mentionnés.
+    4. Des recommandations basées sur les priorités.
+    5. Une conclusion.
+    """
+    
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini", # Ou "gpt-4o" si tu as plus de crédit et veux une meilleure qualité
+            messages=[
+                {"role": "system", "content": "Tu es un expert en développement urbain et en data science, spécialisé dans les diagnostics de villes africaines."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000, # Augmente si tu veux des diagnostics plus longs
+            temperature=0.7 # Contrôle la créativité (0.2 pour plus factuel, 1.0 pour plus créatif)
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Erreur lors de la génération du diagnostic : {e}"
+
 # Affichage des résultats
 if submit:
+    st.success(f"✅ Diagnostic en cours de génération pour {ville}...")
+    
+    # Affiche un spinner pendant la génération
+    with st.spinner("L'IA est en train de rédiger le diagnostic..."):
+        diagnostic_ia = generate_diagnostic(ville, population, defis, priorites, commentaire)
+    
     st.success(f"✅ Diagnostic généré pour {ville} !")
     
     # Colonnes pour un meilleur affichage
@@ -42,22 +86,8 @@ if submit:
             st.write(f"**💬 Commentaire :** {commentaire}")
     
     with col2:
-        st.write("### 🤖 Diagnostic IA (exemple simulé)")
-        diagnostic_text = f"""
-        **Analyse urbaine pour {ville}**
-        
-        Avec une population de {population:,} habitants, {ville} présente des caractéristiques urbaines spécifiques qui nécessitent une approche adaptée.
-        
-        **Défis identifiés :**
-        {chr(10).join([f"• {defi}" for defi in defis]) if defis else "• Aucun défi spécifique identifié"}
-        
-        **Recommandations prioritaires :**
-        {chr(10).join([f"• Développer des solutions pour {priorite.lower()}" for priorite in priorites]) if priorites else "• Évaluation générale recommandée"}
-        
-        **Conclusion :**
-        Une approche intégrée, basée sur les données et les besoins locaux, est recommandée pour optimiser la gestion urbaine de {ville}.
-        """
-        st.write(diagnostic_text)
+        st.write("### 🤖 Diagnostic IA")
+        st.markdown(diagnostic_ia) # Utilise st.markdown pour afficher le texte formaté par l'IA
         
         # Graphique simple (exemple)
         if defis:
