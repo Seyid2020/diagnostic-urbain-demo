@@ -267,3 +267,37 @@ with tab3:
             st.markdown(f"**Réponse IA :** {reponse_ia}")
         else:
             st.info("Veuillez saisir une question.")
+
+
+
+
+
+
+
+import requests
+
+def generate_hf_report(prompt, hf_token):
+    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1"
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 1024,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
+    }
+    response = requests.post(API_URL, headers=headers, json=payload)
+    if response.status_code == 200:
+        try:
+            return response.json()[0]['generated_text']
+        except Exception:
+            return str(response.json())
+    else:
+        return f"Erreur Hugging Face : {response.text}"
+
+# ... (dans le bouton Générer le diagnostic)
+if moteur_ia == "Hugging Face":
+    hf_token = st.secrets["HF_TOKEN"]
+    with st.spinner("Génération IA Hugging Face en cours..."):
+        rapport = generate_hf_report(prompt, hf_token)
