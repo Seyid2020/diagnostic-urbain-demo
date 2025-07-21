@@ -11,38 +11,34 @@ import markdown
 import requests
 
 # --- Fonction Hugging Face ---
-def generate_hf_report(prompt, hf_token):
-    # Liste de modèles à essayer
-    models = [
-        "microsoft/DialoGPT-medium",
-        "facebook/blenderbot-400M-distill",
-        "google/flan-t5-base",
-        "bigscience/bloom-560m"
-    ]
-    
-    for model in models:
-        API_URL = f"https://api-inference.huggingface.co/models/{model}"
-        headers = {"Authorization": f"Bearer {hf_token}"}
-        payload = {
-            "inputs": prompt[:500],  # Limiter la taille
-            "parameters": {
-                "max_new_tokens": 300,
-                "temperature": 0.7,
-                "return_full_text": False
+import requests
+import json
+
+def generate_ollama_report(prompt):
+    """Utilise Ollama en local (gratuit)"""
+    try:
+        response = requests.post(
+            'http://localhost:11434/api/generate',
+            json={
+                'model': 'llama2',  # ou 'mistral', 'codellama'
+                'prompt': prompt,
+                'stream': False
             }
-        }
-        
-        try:
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-            if response.status_code == 200:
-                result = response.json()
-                if isinstance(result, list) and len(result) > 0:
-                    return result[0].get('generated_text', str(result))
-                return str(result)
-        except Exception as e:
-            continue
-    
-    return "Aucun modèle Hugging Face disponible. Essayez OpenAI ou installez Ollama."
+        )
+        if response.status_code == 200:
+            return response.json()['response']
+        else:
+            return f"Erreur Ollama: {response.text}"
+    except Exception as e:
+        return f"Ollama non disponible: {e}. Installez Ollama depuis https://ollama.ai"
+
+# Dans votre interface, ajoutez cette option :
+moteur_ia = st.selectbox("Choisissez le moteur IA", ["OpenAI", "Hugging Face", "Ollama (Local)"])
+
+# Dans la génération du rapport :
+elif moteur_ia == "Ollama (Local)":
+    with st.spinner("Génération IA Ollama en cours..."):
+        rapport = generate_ollama_report(prompt)
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
