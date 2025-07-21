@@ -4,7 +4,9 @@ from datetime import datetime
 import pandas as pd
 from io import BytesIO
 import PyPDF2
-import pdfkit
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import simpleSplit
 import markdown
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
@@ -40,9 +42,26 @@ st.markdown("""
 tab1, tab2, tab3 = st.tabs(["🆕 Nouveau Diagnostic", "📊 Dashboard", "💬 Chatbot"])
 
 def markdown_to_pdf(text):
-    html = markdown.markdown(text)
-    pdf_bytes = pdfkit.from_string(html, False)
-    return BytesIO(pdf_bytes)
+    # Convertit le markdown en texte brut (simple)
+    plain_text = markdown.markdown(text)
+    # Supprime les balises HTML pour le PDF (option simple)
+    import re
+    plain_text = re.sub('<[^<]+?>', '', plain_text)
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    margin = 40
+    y = height - margin
+    lines = simpleSplit(plain_text, 'Helvetica', 12, width - 2*margin)
+    for line in lines:
+        if y < margin:
+            c.showPage()
+            y = height - margin
+        c.drawString(margin, y, line)
+        y -= 15
+    c.save()
+    buffer.seek(0)
+    return buffer
 
 with tab1:
     st.markdown("""
