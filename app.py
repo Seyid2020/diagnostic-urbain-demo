@@ -8,6 +8,28 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit
 import markdown
+import requests
+
+# --- Fonction Hugging Face ---
+def generate_hf_report(prompt, hf_token):
+    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1"
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 1024,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
+    }
+    response = requests.post(API_URL, headers=headers, json=payload)
+    if response.status_code == 200:
+        try:
+            return response.json()[0]['generated_text']
+        except Exception:
+            return str(response.json())
+    else:
+        return f"Erreur Hugging Face : {response.text}"
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
@@ -179,6 +201,7 @@ Structure du rapport attendue :
 5. Conclusion prospective (scénarios, axes d’amélioration)
 6. Références et sources (si possible)
 
+Inclue les informations les plus récentes disponibles sur le web concernant la ville et le pays.
 Utilise toutes les informations et documents fournis. Si besoin, complète avec des données publiques récentes sur la ville ou le pays. Mets les sous-titres en gras. Rédige chaque section de façon détaillée et professionnelle.
         """
 
@@ -197,24 +220,9 @@ Utilise toutes les informations et documents fournis. Si besoin, complète avec 
                 rapport = f"Erreur lors de la génération du rapport : {e}"
 
         elif moteur_ia == "Hugging Face":
-            rapport = f"""
-## 📋 Résumé Exécutif
-La ville de {ville}, {pays}, présente un profil urbain dynamique...
-
-## 👥 Contexte Démographique et Social
-...
-
-## ⚠️ Analyse détaillée des défis et opportunités
-...
-
-## 🎯 Recommandations Stratégiques
-...
-
-## 📊 Conclusion Prospective
-...
-
-*Diagnostic généré par UrbanAI - {datetime.now().strftime("%d/%m/%Y à %H:%M")}*
-            """
+            hf_token = st.secrets["HF_TOKEN"]
+            with st.spinner("Génération IA Hugging Face en cours..."):
+                rapport = generate_hf_report(prompt, hf_token)
 
         st.markdown("### 🤖 Rapport IA")
         st.markdown(f"""
@@ -267,37 +275,3 @@ with tab3:
             st.markdown(f"**Réponse IA :** {reponse_ia}")
         else:
             st.info("Veuillez saisir une question.")
-
-
-
-
-
-
-
-import requests
-
-def generate_hf_report(prompt, hf_token):
-    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1"
-    headers = {"Authorization": f"Bearer {hf_token}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 1024,
-            "temperature": 0.7,
-            "return_full_text": False
-        }
-    }
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
-        try:
-            return response.json()[0]['generated_text']
-        except Exception:
-            return str(response.json())
-    else:
-        return f"Erreur Hugging Face : {response.text}"
-
-# ... (dans le bouton Générer le diagnostic)
-if moteur_ia == "Hugging Face":
-    hf_token = st.secrets["HF_TOKEN"]
-    with st.spinner("Génération IA Hugging Face en cours..."):
-        rapport = generate_hf_report(prompt, hf_token)
