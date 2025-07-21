@@ -2,7 +2,6 @@
 streamlit
 matplotlib
 numpy
-openai
 requests
 openai
 pandas
