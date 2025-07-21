@@ -12,25 +12,24 @@ import requests
 
 # --- Fonction Hugging Face ---
 def generate_hf_report(prompt, hf_token):
-    # Remplace ici par un modèle compatible
-    API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
-    headers = {"Authorization": f"Bearer {hf_token}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 512,
-            "temperature": 0.7,
-            "return_full_text": False
-        }
-    }
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
-        try:
-            return response.json()[0]['generated_text']
-        except Exception:
-            return str(response.json())
-    else:
-        return f"Erreur Hugging Face : {response.text}"
+    """Utilise la nouvelle API Inference Providers de HF"""
+    from huggingface_hub import InferenceClient
+    
+    try:
+        client = InferenceClient(api_key=hf_token)
+        
+        # Utilise un modèle via les providers (gratuit dans la limite de $0.10/mois)
+        response = client.chat.completions.create(
+            model="meta-llama/Llama-3.1-8B-Instruct",  # Via providers
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"Erreur Hugging Face Providers: {e}"
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
