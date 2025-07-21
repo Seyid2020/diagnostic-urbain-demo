@@ -1,6 +1,10 @@
 import streamlit as st
 import openai
 from datetime import datetime
+import pandas as pd
+import os
+from io import BytesIO
+from fpdf import FPDF
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
@@ -34,6 +38,29 @@ st.markdown("""
 
 tab1, tab2, tab3 = st.tabs(["🆕 Nouveau Diagnostic", "📊 Dashboard", "💬 Chatbot"])
 
+# --- HISTORIQUE ---
+HISTO_FILE = "historique_diagnostics.csv"
+if not os.path.exists(HISTO_FILE):
+    pd.DataFrame(columns=["date", "ville", "pays", "rapport"]).to_csv(HISTO_FILE, index=False)
+
+def save_to_history(ville, pays, rapport):
+    df = pd.read_csv(HISTO_FILE)
+    new_row = {"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "ville": ville, "pays": pays, "rapport": rapport}
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    df.to_csv(HISTO_FILE, index=False)
+
+def markdown_to_pdf(text, filename="rapport.pdf"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", size=12)
+    for line in text.split('\n'):
+        pdf.multi_cell(0, 10, line)
+    pdf_output = BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
+    return pdf_output
+
 with tab1:
     st.markdown("""
     <div style="background:#eafaf1; border-radius:8px; padding:1rem; margin-bottom:1rem;">
@@ -42,6 +69,8 @@ with tab1:
     """, unsafe_allow_html=True)
 
     moteur_ia = st.selectbox("Choisissez le moteur IA", ["OpenAI", "Hugging Face"])
+    longueur = st.radio("Longueur du rapport souhaitée", ["Court (2 pages)", "Standard (4 pages)", "Détaillé (8 pages)"], index=2)
+    recherche_web = st.checkbox("Inclure une recherche web sur la ville (si possible)")
 
     # --- Section 1 : Société ---
     st.header("Section 1 : Société 👥")
@@ -83,27 +112,31 @@ with tab1:
         accept_multiple_files=True
     )
 
-    # Lecture du contenu des fichiers (simple, pour démo)
+    # --- Afficher un résumé des données du CSV uploadé ---
     doc_texts = []
-    for file in uploaded_files:
-        if file.type == "application/pdf":
-            try:
-                import PyPDF2
-                reader = PyPDF2.PdfReader(file)
-                text = ""
-                for page in reader.pages:
-                    text += page.extract_text() or ""
-                doc_texts.append(f"Contenu du PDF {file.name} :\n{text[:2000]}")
-            except Exception as e:
-                doc_texts.append(f"Erreur lecture PDF {file.name} : {e}")
-        elif file.type == "text/csv":
-            import pandas as pd
-            df = pd.read_csv(file)
-            doc_texts.append(f"Contenu du CSV {file.name} :\n{df.head(10).to_string()}")
-        elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            import pandas as pd
-            df = pd.read_excel(file)
-            doc_texts.append(f"Contenu du Excel {file.name} :\n{df.head(10).to_string()}")
+    if uploaded_files:
+        st.subheader("📑 Résumé des fichiers uploadés")
+        for file in uploaded_files:
+            if file.type == "application/pdf":
+                try:
+                    import PyPDF2
+                    reader = PyPDF2.PdfReader(file)
+                    text = ""
+                    for page in reader.pages:
+                        text += page.extract_text() or ""
+                    doc_texts.append(f"Contenu du PDF {file.name} :\n{text[:2000]}")
+                    st.markdown(f"**{file.name} (PDF)** : {len(text)} caractères extraits")
+                except Exception as e:
+                    doc_texts.append(f"Erreur lecture PDF {file.name} : {e}")
+                    st.warning(f"Erreur lecture PDF {file.name} : {e}")
+            elif file.type == "text/csv":
+                df = pd.read_csv(file)
+                doc_texts.append(f"Contenu du CSV {file.name} :\n{df.head(10).to_string()}")
+                st.markdown(f"**{file.name} (CSV)** :\n{df.head(5).to_markdown()}", unsafe_allow_html=True)
+            elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                df = pd.read_excel(file)
+                doc_texts.append(f"Contenu du Excel {file.name} :\n{df.head(10).to_string()}")
+                st.markdown(f"**{file.name} (Excel)** :\n{df.head(5).to_markdown()}", unsafe_allow_html=True)
 
     # --- Génération du diagnostic ---
     if st.button("🚀 Générer le diagnostic"):
@@ -111,7 +144,7 @@ with tab1:
 
         # Construction du prompt enrichi
         prompt = f"""
-Vous êtes un expert en développement urbain africain. Générez un rapport urbain long, structuré, avec des sous-titres clairs et des recommandations précises, basé sur les informations suivantes :
+Vous êtes un expert en développement urbain africain. Générez un rapport urbain {longueur.lower()}, structuré, avec des sous-titres clairs, des icônes, des couleurs, et des recommandations précises, basé sur les informations suivantes :
 
 Section Société :
 - Taux de scolarisation primaire : {scolarisation_primaire}
@@ -147,7 +180,12 @@ Structure du rapport attendue :
 5. Conclusion prospective (scénarios, axes d’amélioration)
 6. Références et sources (si possible)
 
-Utilise toutes les informations et documents fournis. Si besoin, complète avec des données publiques récentes sur la ville ou le pays. Mets les sous-titres en gras. Rédige chaque section de façon détaillée et professionnelle.
+Contraintes :
+- Limite la longueur à 8 pages maximum (environ 4000-5000 mots)
+- Mets les sous-titres en gras et ajoute des icônes pour chaque section
+- Utilise toutes les informations et documents fournis
+- { "Inclure une recherche web sur la ville et le pays pour enrichir le rapport avec des données récentes." if recherche_web else "" }
+- Rédige chaque section de façon détaillée et professionnelle.
         """
 
         rapport = ""
@@ -157,7 +195,7 @@ Utilise toutes les informations et documents fournis. Si besoin, complète avec 
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=1800,
+                    max_tokens=4000,
                     temperature=0.7,
                 )
                 rapport = response.choices[0].message.content
@@ -185,12 +223,25 @@ La ville de {ville}, {pays}, présente un profil urbain dynamique...
 *Diagnostic généré par UrbanAI - {datetime.now().strftime("%d/%m/%Y à %H:%M")}*
             """
 
+        # --- Affichage du rapport stylisé ---
         st.markdown("### 🤖 Rapport IA")
         st.markdown(f"""
         <div class="diagnostic-card" style="background:white; padding:1.5rem; border-radius:10px; box-shadow:0 2px 4px rgba(0,0,0,0.1); margin:1rem 0;">
             {rapport}
         </div>
         """, unsafe_allow_html=True)
+
+        # --- Sauvegarde dans l'historique ---
+        save_to_history(ville, pays, rapport)
+
+        # --- Téléchargement PDF ---
+        pdf_file = markdown_to_pdf(rapport)
+        st.download_button(
+            label="📥 Télécharger le rapport en PDF",
+            data=pdf_file,
+            file_name=f"Diagnostic_{ville}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mime="application/pdf"
+        )
 
 # --- ONGLET 2 : DASHBOARD ---
 with tab2:
@@ -200,7 +251,22 @@ with tab2:
         Suivez l’évolution de vos villes et identifiez les leviers d’action.
     </div>
     """, unsafe_allow_html=True)
-    st.info("Dashboard à venir : ici s’afficheront tous les diagnostics générés.")
+    # Affichage de l'historique
+    df_hist = pd.read_csv(HISTO_FILE)
+    if not df_hist.empty:
+        st.dataframe(df_hist[["date", "ville", "pays"]].sort_values("date", ascending=False))
+        selected = st.selectbox("Voir un rapport généré :", df_hist["date"].sort_values(ascending=False))
+        rapport_sel = df_hist[df_hist["date"] == selected]["rapport"].values[0]
+        st.markdown("### Rapport sélectionné")
+        st.markdown(rapport_sel)
+        st.download_button(
+            label="📥 Télécharger ce rapport en PDF",
+            data=markdown_to_pdf(rapport_sel),
+            file_name=f"Diagnostic_{selected.replace(' ','_').replace(':','')}.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.info("Aucun diagnostic généré pour l’instant.")
 
 # --- ONGLET 3 : CHATBOT ---
 with tab3:
