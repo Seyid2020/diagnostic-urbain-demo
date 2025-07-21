@@ -11,26 +11,28 @@ import markdown
 import requests
 
 # --- Fonction Hugging Face ---
-import requests
-import json
+def generate_groq_report(prompt, groq_api_key):
+    """Utilise l'API Groq (gratuite)"""
+    import requests
+    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {groq_api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messages": [{"role": "user", "content": prompt}],
+        "model": "llama3-8b-8192",
+        "max_tokens": 1500,
+        "temperature": 0.7
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        return f"Erreur Groq: {response.text}"
 
-def generate_ollama_report(prompt):
-    """Utilise Ollama en local (gratuit)"""
-    try:
-        response = requests.post(
-            'http://localhost:11434/api/generate',
-            json={
-                'model': 'llama2',  # ou 'mistral', 'codellama'
-                'prompt': prompt,
-                'stream': False
-            }
-        )
-        if response.status_code == 200:
-            return response.json()['response']
-        else:
-            return f"Erreur Ollama: {response.text}"
-    except Exception as e:
-        return f"Ollama non disponible: {e}. Installez Ollama depuis https://ollama.ai"
 
 # Dans votre interface, ajoutez cette option :
 moteur_ia = st.selectbox("Choisissez le moteur IA", ["OpenAI", "Hugging Face", "Ollama (Local)"])
