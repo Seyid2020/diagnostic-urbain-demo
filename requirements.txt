@@ -1,9 +1,7 @@
 
-streamlit
-matplotlib
-numpy
-requests
+
 openai
 pandas
-fpdf
 PyPDF2
+reportlab
+markdown
