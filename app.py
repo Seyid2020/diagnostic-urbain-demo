@@ -12,7 +12,11 @@ import requests
 
 # --- Fonction Hugging Face ---
 def generate_hf_report(prompt, hf_token):
-    API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-small"
+    models = [
+        "google/flan-t5-base",
+        "bigscience/bloom-560m",
+        "tiiuae/falcon-7b-instruct"
+    ]
     headers = {"Authorization": f"Bearer {hf_token}"}
     payload = {
         "inputs": prompt,
@@ -22,14 +26,16 @@ def generate_hf_report(prompt, hf_token):
             "return_full_text": False
         }
     }
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
-        try:
-            return response.json()[0]['generated_text']
-        except Exception:
-            return str(response.json())
-    else:
-        return f"Erreur Hugging Face : {response.text}"
+    for model in models:
+        API_URL = f"https://api-inference.huggingface.co/models/{model}"
+        response = requests.post(API_URL, headers=headers, json=payload)
+        if response.status_code == 200:
+            try:
+                return response.json()[0]['generated_text']
+            except Exception:
+                return str(response.json())
+        # Si le modèle n'est pas dispo, on essaie le suivant
+    return f"Erreur Hugging Face : Aucun modèle compatible trouvé."
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
