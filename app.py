@@ -1,45 +1,58 @@
-import streamlit as st
+st.markdown("""
+<style>
+.main-header {
+    background: linear-gradient(90deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    padding: 2rem 2rem 1rem 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.08);
+    text-align: center;
+}
+.logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+</style>
+<div class="logo-container">
+    <img src="https://cdn.abacus.ai/images/d1788567-27c2-4731-b4f0-26dc07fcd4f3.png" alt="CUS Logo" width="320">
+</div>
+<div class="main-header">
+    <h1 style="color:#1f4e79;">🏙️ UrbanAI Diagnostic</h1>
+    <h3 style="color:#e67e22;">La plateforme intelligente pour le diagnostic urbain en Afrique</h3>
+    <p style="font-size:1.1rem; color:#34495e;">
+        <b>Description :</b> Déploiement d’un outil de diagnostic rapide et interactif pour évaluer la performance urbaine, en croisant données locales et intelligence artificielle.<br>
+        Il permet aux décideurs d’identifier rapidement les points forts et axes d’amélioration d’une ville.<br>
+        <span style="color:#1f4e79;"><b>Africancities Open IA Services</b></span>
+    </p>
+    <p style="font-size:1.1rem; color:#34495e;">
+        <b>Une plateforme intelligente d’évaluation, de suivi et d’aide à la décision</b> pour améliorer la qualité de vie urbaine en Afrique.<br>
+        Elle intègre la recherche, la formation, des tableaux de bord en temps réel, des diagnostics, des recommandations et des actualités couvrant toutes les dimensions de la vie urbaine.
+    </p>
+    <p style="font-size:1.1rem; color:#16a085;">
+        Générez, explorez, et comprenez votre ville avec l’IA.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
-st.set_page_config(page_title="Diagnostic Urbain", layout="wide")
+st.markdown("""
+<div style="background:#eafaf1; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+    <b>📝 Lancez un diagnostic personnalisé de votre ville en quelques clics !</b><br>
+    Saisissez vos données, l’IA s’occupe du reste.
+</div>
+""", unsafe_allow_html=True)
 
-# Barre latérale pour la navigation
-page = st.sidebar.selectbox(
-    "Navigation",
-    ["Accueil", "Formulaire Diagnostic", "Chatbot", "Dashboard"]
-)
+st.markdown("""
+<div style="background:#f9fbe7; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+    <b>📊 Visualisez et comparez tous vos diagnostics urbains.</b><br>
+    Suivez l’évolution de vos villes et identifiez les leviers d’action.
+</div>
+""", unsafe_allow_html=True)
 
-if page == "Accueil":
-    st.markdown("# Diagnostic Urbain")
-    st.write("Bienvenue sur la plateforme de diagnostic urbain.")
-
-elif page == "Formulaire Diagnostic":
-    st.markdown("## 📝 Remplir le formulaire détaillé")
-    st.markdown(
-        "[👉 Cliquez ici pour accéder au formulaire Microsoft Forms](https://forms.office.com/Pages/ResponsePage.aspx?id=V2FiOUegiUaHom-mRctct4nQ0_9pFOVOtOpqm9QvhpxUNDlWTVk1UjI4VldPS0xWUk1EVUZaMEs4Ty4u)"
-    )
-    st.write("""
-    **Étapes à suivre :**
-    1. Cliquez sur le lien ci-dessus pour remplir le formulaire détaillé sur votre ville.
-    2. Une fois le formulaire soumis, vos réponses seront traitées par notre équipe/plateforme.
-    3. Vous recevrez un diagnostic personnalisé basé sur vos réponses, enrichi par l’IA et les données récentes.
-    """)
-    st.write("Merci ! Veuillez saisir ici les informations principales de votre formulaire pour générer un diagnostic de démonstration.")
-
-    ville = st.text_input("Nom de la ville", "Nouakchott")
-    population = st.number_input("Population", min_value=0, value=1000000)
-    defis = st.text_area("Défis principaux")
-    commentaire = st.text_area("Commentaire libre")
-
-    if st.button("Générer le diagnostic"):
-        st.success(f"Diagnostic généré pour {ville} (Population : {population})")
-        # Ici tu ajoutes l'appel à l'IA ou à ton diagnostic
-
-elif page == "Chatbot":
-    st.markdown("## 🤖 Chatbot")
-    st.write("Posez vos questions sur le diagnostic urbain ici.")
-    # Ajoute ici ton code chatbot
-
-elif page == "Dashboard":
-    st.markdown("## 📊 Dashboard")
-    st.write("Visualisez les données urbaines ici.")
-    # Ajoute ici ton code dashboard
+st.markdown("""
+<div style="background:#e3f2fd; border-radius:8px; padding:1rem; margin-bottom:1rem;">
+    <b>💬 Posez vos questions à notre assistant IA !</b><br>
+    Obtenez des conseils, des explications et de l’aide sur l’urbanisme.
+</div>
+""", unsafe_allow_html=True)
