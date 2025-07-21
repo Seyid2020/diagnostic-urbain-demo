@@ -13,7 +13,7 @@ import requests
 # --- Fonction Hugging Face ---
 def generate_hf_report(prompt, hf_token):
     # Modèle open-source et accessible gratuitement
-    API_URL = "https://api-inference.huggingface.co/models/google/gemma-7b-it"
+    API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
     # Pour Zephyr, utilise : "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
     headers = {"Authorization": f"Bearer {hf_token}"}
     payload = {
