@@ -12,7 +12,9 @@ import requests
 
 # --- Fonction Hugging Face ---
 def generate_hf_report(prompt, hf_token):
-    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1"
+    # Modèle open-source et accessible gratuitement
+    API_URL = "https://api-inference.huggingface.co/models/google/gemma-7b-it"
+    # Pour Zephyr, utilise : "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
     headers = {"Authorization": f"Bearer {hf_token}"}
     payload = {
         "inputs": prompt,
@@ -30,6 +32,7 @@ def generate_hf_report(prompt, hf_token):
             return str(response.json())
     else:
         return f"Erreur Hugging Face : {response.text}"
+           
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
