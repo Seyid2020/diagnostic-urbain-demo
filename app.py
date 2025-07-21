@@ -12,9 +12,8 @@ import requests
 
 # --- Fonction Hugging Face ---
 def generate_hf_report(prompt, hf_token):
-    # Modèle open-source et accessible gratuitement
-    API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
-    # Pour Zephyr, utilise : "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+    # Utilise Falcon-7B-Instruct, compatible API Inference gratuite
+    API_URL = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
     headers = {"Authorization": f"Bearer {hf_token}"}
     payload = {
         "inputs": prompt,
@@ -32,7 +31,6 @@ def generate_hf_report(prompt, hf_token):
             return str(response.json())
     else:
         return f"Erreur Hugging Face : {response.text}"
-           
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
