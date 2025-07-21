@@ -12,24 +12,37 @@ import requests
 
 # --- Fonction Hugging Face ---
 def generate_hf_report(prompt, hf_token):
-    API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-small"
-    headers = {"Authorization": f"Bearer {hf_token}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 512,
-            "temperature": 0.7,
-            "return_full_text": False
+    # Liste de modèles à essayer
+    models = [
+        "microsoft/DialoGPT-medium",
+        "facebook/blenderbot-400M-distill",
+        "google/flan-t5-base",
+        "bigscience/bloom-560m"
+    ]
+    
+    for model in models:
+        API_URL = f"https://api-inference.huggingface.co/models/{model}"
+        headers = {"Authorization": f"Bearer {hf_token}"}
+        payload = {
+            "inputs": prompt[:500],  # Limiter la taille
+            "parameters": {
+                "max_new_tokens": 300,
+                "temperature": 0.7,
+                "return_full_text": False
+            }
         }
-    }
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
+        
         try:
-            return response.json()[0]['generated_text']
-        except Exception:
-            return str(response.json())
-    else:
-        return f"Erreur Hugging Face : {response.text}"
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0:
+                    return result[0].get('generated_text', str(result))
+                return str(result)
+        except Exception as e:
+            continue
+    
+    return "Aucun modèle Hugging Face disponible. Essayez OpenAI ou installez Ollama."
 
 # --- PAGE D'ACCUEIL & PHRASES D'ACCROCHE ---
 st.markdown("""
