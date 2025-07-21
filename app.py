@@ -27,74 +27,127 @@ st.markdown("""
     <h1 style="color:#1f4e79;">🏙️ UrbanAI Diagnostic</h1>
     <h3 style="color:#e67e22;">La plateforme intelligente pour le diagnostic urbain en Afrique</h3>
     <p style="font-size:1.1rem; color:#34495e;">
-        <b>Description :</b> Déploiement d’un outil de diagnostic rapide et interactif pour évaluer la performance urbaine, en croisant données locales et intelligence artificielle.<br>
-        Il permet aux décideurs d’identifier rapidement les points forts et axes d’amélioration d’une ville.<br>
-        <span style="color:#1f4e79;"><b>Africancities Open IA Services</b></span>
-    </p>
-    <p style="font-size:1.1rem; color:#34495e;">
-        <b>Une plateforme intelligente d’évaluation, de suivi et d’aide à la décision</b> pour améliorer la qualité de vie urbaine en Afrique.<br>
-        Elle intègre la recherche, la formation, des tableaux de bord en temps réel, des diagnostics, des recommandations et des actualités couvrant toutes les dimensions de la vie urbaine.
-    </p>
-    <p style="font-size:1.1rem; color:#16a085;">
-        Générez, explorez, et comprenez votre ville avec l’IA.
+        <b>Description :</b> Diagnostic rapide, interactif et enrichi par l’IA, basé sur vos réponses et vos documents. Générez un rapport complet, structuré et personnalisé pour votre ville.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# --- ONGLET PRINCIPAL ---
 tab1, tab2, tab3 = st.tabs(["🆕 Nouveau Diagnostic", "📊 Dashboard", "💬 Chatbot"])
 
-# --- ONGLET 1 : NOUVEAU DIAGNOSTIC ---
 with tab1:
     st.markdown("""
     <div style="background:#eafaf1; border-radius:8px; padding:1rem; margin-bottom:1rem;">
-        <b>📝 Lancez un diagnostic personnalisé de votre ville en quelques clics !</b><br>
-        Saisissez vos données, l’IA s’occupe du reste.
+        <b>📝 Remplissez chaque section, ajoutez vos documents, et obtenez un diagnostic urbain complet et personnalisé !</b>
     </div>
     """, unsafe_allow_html=True)
 
-    # Ajout du lien vers le formulaire externe + instructions
-    st.markdown("""
-    <div style="background:#fff3cd; border-radius:8px; padding:1rem; margin-bottom:1rem;">
-        <b>📝 Vous pouvez aussi remplir le <a href="https://forms.office.com/Pages/ResponsePage.aspx?id=V2FiOUegiUaHom-mRctct4nQ0_9pFOVOtOpqm9QvhpxUNDlWTVk1UjI4VldPS0xWUk1EVUZaMEs4Ty4u" target="_blank">formulaire détaillé en ligne</a>.</b><br>
-        Après soumission, copiez les informations principales ici pour générer un diagnostic instantané avec l’IA.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Choix du moteur IA
     moteur_ia = st.selectbox("Choisissez le moteur IA", ["OpenAI", "Hugging Face"])
 
-    with st.form("diagnostic_form"):
-        ville = st.text_input("🏙️ Nom de la ville", "Nouakchott")
-        population = st.number_input("👥 Population estimée", min_value=1000, value=1000000, step=10000)
-        defis = st.multiselect(
-            "⚠️ Principaux défis urbains",
-            ["Eau", "Énergie", "Logement", "Transport", "Environnement", "Santé", "Éducation"],
-            default=["Eau", "Logement"]
-        )
-        priorites = st.multiselect(
-            "🎯 Priorités de développement",
-            ["Smart City", "Durabilité", "Inclusion sociale", "Croissance économique"],
-            default=["Durabilité"]
-        )
-        commentaire = st.text_area("💬 Commentaire libre", placeholder="Ajoutez des informations spécifiques sur votre ville...")
-        submit = st.form_submit_button("🚀 Générer le diagnostic")
+    # --- Section 1 : Société ---
+    st.header("Section 1 : Société 👥")
+    col1, col2 = st.columns(2)
+    with col1:
+        scolarisation_primaire = st.text_input("1. Taux de scolarisation primaire (%)")
+        scolarisation_secondaire = st.text_input("2. Taux de scolarisation secondaire (%)")
+        alphabetisation = st.text_input("3. Taux d’alphabétisation adulte (%)")
+        criminalite = st.text_input("4. Taux de criminalité")
+    with col2:
+        medecins = st.text_input("5. Nombre de médecins pour 10 000 habitants")
+        esperance_vie = st.text_input("6. Espérance de vie à la naissance")
 
-    if submit:
-        st.success(f"✅ Diagnostic en cours de génération pour {ville}...")
+    # --- Section 2 : Habitat ---
+    st.header("Section 2 : Habitat 🏠")
+    col3, col4 = st.columns(2)
+    with col3:
+        eau = st.text_input("7. Accès à l’eau potable (% population urbaine)")
+        electricite = st.text_input("8. Accès à l’électricité (% population urbaine)")
+        surpeuplement = st.text_input("9. Qualité du logement (indice de surpeuplement)")
+        informel = st.text_input("10. Part des logements informels (%)")
+    with col4:
+        cout_logement = st.text_input("11. Coût moyen du logement (loyer moyen/m²) en euros")
+        accession = st.text_input("12. Taux d’accession à la propriété (%)")
+        sanitaires = st.text_input("13. Accès à des sanitaires améliorés (% population)")
+        satisfaction = st.text_input("14. Taux de satisfaction des habitants sur leur logement (%)")
 
+    # --- Section 3 : Coordonnées de la Ville ---
+    st.header("Section 3 : Coordonnées de la Ville 🏙️📬")
+    ville = st.text_input("15. Nom de la Ville 🌆")
+    contact = st.text_input("16. Contact de la Ville 📞💻")
+    pays = st.text_input("17. Pays 🌍")
+
+    # --- Upload de documents ---
+    st.header("Ajoutez vos documents (PDF, CSV, Excel)")
+    uploaded_files = st.file_uploader(
+        "Vous pouvez ajouter plusieurs fichiers (PDF, CSV, Excel). Leur contenu sera analysé pour enrichir le diagnostic.",
+        type=["pdf", "csv", "xlsx"],
+        accept_multiple_files=True
+    )
+
+    # Lecture du contenu des fichiers (simple, pour démo)
+    doc_texts = []
+    for file in uploaded_files:
+        if file.type == "application/pdf":
+            try:
+                import PyPDF2
+                reader = PyPDF2.PdfReader(file)
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+                doc_texts.append(f"Contenu du PDF {file.name} :\n{text[:2000]}")
+            except Exception as e:
+                doc_texts.append(f"Erreur lecture PDF {file.name} : {e}")
+        elif file.type == "text/csv":
+            import pandas as pd
+            df = pd.read_csv(file)
+            doc_texts.append(f"Contenu du CSV {file.name} :\n{df.head(10).to_string()}")
+        elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+            import pandas as pd
+            df = pd.read_excel(file)
+            doc_texts.append(f"Contenu du Excel {file.name} :\n{df.head(10).to_string()}")
+
+    # --- Génération du diagnostic ---
+    if st.button("🚀 Générer le diagnostic"):
+        st.success(f"✅ Diagnostic en cours de génération pour {ville} ({pays})...")
+
+        # Construction du prompt enrichi
         prompt = f"""
-Génère un rapport urbain structuré pour la ville de {ville} ({population:,} habitants).
-Défis principaux : {', '.join(defis) if defis else 'aucun'}.
-Priorités : {', '.join(priorites) if priorites else 'aucune'}.
-Commentaire : {commentaire if commentaire else 'aucun'}.
+Vous êtes un expert en développement urbain africain. Générez un rapport urbain long, structuré, avec des sous-titres clairs et des recommandations précises, basé sur les informations suivantes :
 
-Structure du rapport :
-1. Résumé exécutif
-2. Contexte démographique
-3. Analyse des défis
-4. Recommandations
-5. Conclusion
+Section Société :
+- Taux de scolarisation primaire : {scolarisation_primaire}
+- Taux de scolarisation secondaire : {scolarisation_secondaire}
+- Taux d’alphabétisation adulte : {alphabetisation}
+- Taux de criminalité : {criminalite}
+- Nombre de médecins pour 10 000 habitants : {medecins}
+- Espérance de vie à la naissance : {esperance_vie}
+
+Section Habitat :
+- Accès à l’eau potable : {eau}
+- Accès à l’électricité : {electricite}
+- Qualité du logement (surpeuplement) : {surpeuplement}
+- Part des logements informels : {informel}
+- Coût moyen du logement : {cout_logement}
+- Taux d’accession à la propriété : {accession}
+- Accès à des sanitaires améliorés : {sanitaires}
+- Taux de satisfaction des habitants : {satisfaction}
+
+Coordonnées :
+- Ville : {ville}
+- Contact : {contact}
+- Pays : {pays}
+
+Documents fournis :
+{chr(10).join(doc_texts) if doc_texts else "Aucun document fourni."}
+
+Structure du rapport attendue :
+1. Résumé exécutif (long, synthétique, avec chiffres clés)
+2. Contexte démographique et social (avec analyse fine)
+3. Analyse détaillée des défis et opportunités (sous-sections par thème)
+4. Recommandations stratégiques (claires, actionnables, adaptées à la ville)
+5. Conclusion prospective (scénarios, axes d’amélioration)
+6. Références et sources (si possible)
+
+Utilise toutes les informations et documents fournis. Si besoin, complète avec des données publiques récentes sur la ville ou le pays. Mets les sous-titres en gras. Rédige chaque section de façon détaillée et professionnelle.
         """
 
         rapport = ""
@@ -104,7 +157,7 @@ Structure du rapport :
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=800,
+                    max_tokens=1800,
                     temperature=0.7,
                 )
                 rapport = response.choices[0].message.content
@@ -115,21 +168,19 @@ Structure du rapport :
             # Simulation Hugging Face (remplace par ton vrai appel API si tu veux)
             rapport = f"""
 ## 📋 Résumé Exécutif
-La ville de {ville}, avec ses {population:,} habitants, présente un profil urbain typique des métropoles africaines en croissance rapide.
+La ville de {ville}, {pays}, présente un profil urbain dynamique...
 
-## 👥 Contexte Démographique
-Avec une population de {population:,} habitants, {ville} fait face à une urbanisation accélérée qui nécessite une planification adaptée.
+## 👥 Contexte Démographique et Social
+...
 
-## ⚠️ Analyse des Défis Identifiés
-Les principaux défis identifiés sont :
-{chr(10).join([f"• **{defi}** : Nécessite une attention prioritaire" for defi in defis]) if defis else "• Aucun défi spécifique identifié"}
+## ⚠️ Analyse détaillée des défis et opportunités
+...
 
 ## 🎯 Recommandations Stratégiques
-Basées sur les priorités définies :
-{chr(10).join([f"• Développer des initiatives de **{priorite.lower()}**" for priorite in priorites]) if priorites else "• Évaluation générale recommandée"}
+...
 
-## 📊 Conclusion
-{ville} dispose d'un potentiel de développement important. Une approche intégrée, basée sur les données et les besoins locaux, est recommandée pour optimiser la gestion urbaine et améliorer la qualité de vie des habitants.
+## 📊 Conclusion Prospective
+...
 
 *Diagnostic généré par UrbanAI - {datetime.now().strftime("%d/%m/%Y à %H:%M")}*
             """
