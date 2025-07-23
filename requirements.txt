@@ -1,3 +1,14 @@
+streamlit
+openai
+pandas
+PyPDF2
+markdown
+requests
+reportlab
+pytesseract
+pdf2image
+Pillow
+matplotlib
 
 
 openai
