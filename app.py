@@ -319,7 +319,7 @@ def create_professional_pdf(rapport_text, ville, graphs, context_info=""):
     story.append(Spacer(1, 1*inch))
     
     # Logo ou image (si disponible)
-    story.append(Paragraph("🏙️ UrbanAI Diagnostic Platform", 
+    story.append(Paragraph("��️ UrbanAI Diagnostic Platform", 
                           ParagraphStyle('Logo', fontSize=18, textColor=HexColor(COLORS['accent']), 
                                        alignment=1, fontName='Helvetica-Bold')))
     
@@ -456,7 +456,7 @@ st.markdown("""
     <img src="https://cdn.abacus.ai/images/d1788567-27c2-4731-b4f0-26dc07fcd4f3.png" alt="CUS Logo" width="320">
 </div>
 <div class="main-header">
-    <h1 style="color:#1f4e79;">🏙️ UrbanAI Diagnostic</h1>
+    <h1 style="color:#1f4e79;">��️ UrbanAI Diagnostic</h1>
     <h3 style="color:#e67e22;">La plateforme intelligente pour le diagnostic urbain en Afrique</h3>
     <p style="font-size:1.1rem; color:#34495e;">
         <b>Description :</b> Diagnostic rapide, interactif et enrichi par l'IA, basé sur vos réponses et vos documents.
@@ -464,10 +464,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs(["🆕 Nouveau Diagnostic", "📊 Dashboard", "💬 Chatbot"])
+tab1, tab2, tab3 = st.tabs(["�� Nouveau Diagnostic", "�� Dashboard", "�� Chatbot"])
 
 with tab1:
-    st.header("Section 1 : Société 👥")
+    st.header("Section 1 : Société ��")
     col1, col2 = st.columns(2)
     with col1:
         scolarisation_primaire = st.text_input("Taux de scolarisation primaire (%)")
@@ -478,7 +478,7 @@ with tab1:
         medecins = st.text_input("Nombre de médecins / 10k habitants")
         esperance_vie = st.text_input("Espérance de vie")
 
-    st.header("Section 2 : Habitat 🏠")
+    st.header("Section 2 : Habitat ��")
     col3, col4 = st.columns(2)
     with col3:
         eau = st.text_input("Accès à l'eau potable (%)")
@@ -491,7 +491,7 @@ with tab1:
         sanitaires = st.text_input("Accès à des sanitaires améliorés (%)")
         satisfaction = st.text_input("Satisfaction logement (%)")
 
-    st.header("Section 3 : Ville 📍")
+    st.header("Section 3 : Ville ��")
     ville = st.text_input("Nom de la Ville")
     contact = st.text_input("Contact")
     pays = st.text_input("Pays")
@@ -521,15 +521,15 @@ with tab1:
 
     moteur_ia = st.selectbox("Moteur IA", ["OpenAI", "Hugging Face", "Groq"])
 
-    if st.button("🚀 Générer le diagnostic"):
-        st.info("🔍 Recherche d'informations contextuelles...")
+    if st.button("�� Générer le diagnostic"):
+        st.info("�� Recherche d'informations contextuelles...")
         
         # Recherche Web LLM
         context_info = ""
         if ville and pays and moteur_ia == "Groq":
-            context_info = Web Search_context(ville, pays, st.secrets["GROQ_API_KEY"])
+            context_info = web_search_context(ville, pays, st.secrets["GROQ_API_KEY"])
         
-        st.info("📊 Génération des graphiques avancés...")
+        st.info("�� Génération des graphiques avancés...")
         
         # Préparation des données pour les graphiques
         data_dict = {
@@ -552,7 +552,7 @@ with tab1:
         # Génération des graphiques
         graphs = generate_advanced_graphs(data_dict)
         
-        st.info("🧠 Génération du rapport IA détaillé...")
+        st.info("�� Génération du rapport IA détaillé...")
 
         # Prompt enrichi pour un rapport plus long et détaillé
         prompt = f"""
@@ -642,11 +642,11 @@ et des recommandations concrètes et réalisables. Chaque section doit faire au 
         st.success("✅ Rapport généré avec succès !")
         
         # Affichage du rapport
-        st.markdown("### 🧠 Rapport IA généré")
+        st.markdown("### �� Rapport IA généré")
         st.markdown(rapport)
 
         # Affichage des graphiques
-        st.markdown("### 📈 Graphiques et Visualisations")
+        st.markdown("### �� Graphiques et Visualisations")
         
         col_g1, col_g2 = st.columns(2)
         with col_g1:
@@ -664,21 +664,21 @@ et des recommandations concrètes et réalisables. Chaque section doit faire au 
             st.image(base64.b64decode(graphs["habitat_analysis"]), use_column_width=True)
 
         # Génération du PDF professionnel
-        st.info("📄 Génération du PDF professionnel...")
+        st.info("�� Génération du PDF professionnel...")
         pdf_buffer = create_professional_pdf(rapport, ville, graphs, context_info)
         
         st.download_button(
-            label="📥 Télécharger le Rapport PDF Professionnel",
+            label="�� Télécharger le Rapport PDF Professionnel",
             data=pdf_buffer,
             file_name=f"Diagnostic_Urbain_{ville}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf"
         )
 
 with tab2:
-    st.info("📊 Dashboard analytique à venir - Comparaisons multi-villes, tendances temporelles, benchmarks régionaux...")
+    st.info("�� Dashboard analytique à venir - Comparaisons multi-villes, tendances temporelles, benchmarks régionaux...")
 
 with tab3:
-    st.header("💬 Assistant IA Urbain")
+    st.header("�� Assistant IA Urbain")
     question = st.text_input("Posez votre question à l'expert IA en développement urbain")
     if st.button("Envoyer"):
         if question.strip():
@@ -702,4 +702,4 @@ with tab3:
                     temperature=0.7,
                 )
                 reponse = response.choices[0].message.content
-            st.markdown(f"**🤖 Réponse de l'Expert IA :** {reponse}")
+            st.markdown(f"**�� Réponse de l'Expert IA :** {reponse}")
