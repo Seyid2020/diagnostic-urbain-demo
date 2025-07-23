@@ -45,7 +45,7 @@ def extract_text_from_image_pdf(pdf_file):
         return f"[Erreur OCR] : {e}"
 
 # --- Web LLM pour recherche d'informations contextuelles ---
-def Web Search_context(ville, pays, groq_api_key):
+def web_search_context(ville, pays, groq_api_key):
     """Recherche d'informations contextuelles sur la ville via IA"""
     prompt = f"""
     Recherchez et fournissez des informations contextuelles importantes sur {ville}, {pays} :
