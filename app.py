@@ -652,16 +652,16 @@ et des recommandations concrètes et réalisables. Chaque section doit faire au 
         with col_g1:
             if 'social_radar' in graphs:
                 st.markdown("**Indicateurs Sociaux - Vue d'ensemble**")
-                st.markdown(f'<img src="data:image/png;base64,{graphs["social_radar"]}" width="100%">', unsafe_allow_html=True)
+                st.image(base64.b64decode(graphs["social_radar"]), use_column_width=True)
         
         with col_g2:
             if 'indices_development' in graphs:
                 st.markdown("**Indices de Développement Urbain**")
-                st.markdown(f'<img src="data:image/png;base64,{graphs["indices_development"]}" width="100%">', unsafe_allow_html=True)
+                st.image(base64.b64decode(graphs["indices_development"]), use_column_width=True)
         
         if 'habitat_analysis' in graphs:
             st.markdown("**Analyse de l'Habitat et des Infrastructures**")
-            st.markdown(f'<img src="data:image/png;base64,{graphs["habitat_analysis"]}" width="100%">', unsafe_allow_html=True)
+            st.image(base64.b64decode(graphs["habitat_analysis"]), use_column_width=True)
 
         # Génération du PDF professionnel
         st.info("📄 Génération du PDF professionnel...")
