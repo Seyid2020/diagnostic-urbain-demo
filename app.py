@@ -45,7 +45,7 @@ def extract_text_from_image_pdf(pdf_file):
         return f"[Erreur OCR] : {e}"
 
 # --- Web LLM ENRICHI pour recherche d'informations contextuelles ---
-def Web Search_context(ville, pays, groq_api_key):
+def web_search_context(ville, pays, groq_api_key):
     """Recherche d'informations contextuelles TRÈS DÉTAILLÉES sur la ville via IA"""
     prompt = f"""
     Vous êtes un expert en développement urbain africain. Fournissez une analyse contextuelle TRÈS DÉTAILLÉE et APPROFONDIE sur {ville}, {pays} en 1500 mots minimum :
@@ -605,9 +605,9 @@ with tab1:
         context_info = ""
         if ville and pays:
             if moteur_ia == "Groq":
-                context_info = Web Search_context(ville, pays, st.secrets["GROQ_API_KEY"])
+                context_info = web_search_context(ville, pays, st.secrets["GROQ_API_KEY"])
             else:
-                context_info = Web Search_context(ville, pays, st.secrets.get("GROQ_API_KEY", ""))
+                context_info = web_search_context(ville, pays, st.secrets.get("GROQ_API_KEY", ""))
         
         st.info("Génération des graphiques avancés...")
         
