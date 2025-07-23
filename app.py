@@ -44,74 +44,20 @@ def extract_text_from_image_pdf(pdf_file):
     except Exception as e:
         return f"[Erreur OCR] : {e}"
 
-# --- Web LLM ENRICHI pour recherche d'informations contextuelles ---
-def web_search_context(ville, pays, groq_api_key):
-    """Recherche d'informations contextuelles TRÈS DÉTAILLÉES sur la ville via IA"""
+# --- Web LLM MODIFIÉ pour éviter les limites ---
+def Web_Search_context(ville, pays, groq_api_key):
+    """Recherche d'informations contextuelles sur la ville via IA"""
     prompt = f"""
-    Vous êtes un expert en développement urbain africain. Fournissez une analyse contextuelle TRÈS DÉTAILLÉE et APPROFONDIE sur {ville}, {pays} en 1500 mots minimum :
+    Analysez {ville}, {pays} en 800 mots maximum :
 
-    1. DÉMOGRAPHIE ET POPULATION :
-    - Population actuelle précise avec sources
-    - Taux de croissance démographique annuel
-    - Structure par âge et sexe
-    - Densité de population par quartier
-    - Migrations internes et externes
-    - Projections démographiques 2030-2050
+    1. DÉMOGRAPHIE : Population, croissance, structure par âge
+    2. ÉCONOMIE : Secteurs dominants, emploi, PIB local
+    3. INFRASTRUCTURE : Transport, santé, éducation, services
+    4. DÉFIS URBAINS : Logement, eau, électricité, déchets
+    5. COMPARAISONS : Position vs autres capitales sahéliennes
+    6. PERSPECTIVES : Projets en cours, potentiels de développement
 
-    2. GÉOGRAPHIE ET CLIMAT :
-    - Situation géographique précise
-    - Topographie et relief
-    - Climat et saisons
-    - Ressources naturelles disponibles
-    - Risques climatiques et environnementaux
-    - Impact du changement climatique
-
-    3. ÉCONOMIE LOCALE DÉTAILLÉE :
-    - PIB de la ville et contribution au PIB national
-    - Secteurs économiques dominants
-    - Principales entreprises et employeurs
-    - Taux de chômage par catégorie
-    - Économie informelle et son poids
-    - Investissements étrangers récents
-
-    4. INFRASTRUCTURE ET SERVICES :
-    - État du réseau routier et transport
-    - Système de santé (hôpitaux, centres de santé)
-    - Système éducatif (écoles, universités)
-    - Télécommunications et internet
-    - Services bancaires et financiers
-    - Marchés et commerce
-
-    5. DÉFIS URBAINS SPÉCIFIQUES :
-    - Problèmes de logement et bidonvilles
-    - Gestion des déchets et assainissement
-    - Approvisionnement en eau et électricité
-    - Sécurité et criminalité
-    - Pollution et environnement
-    - Gouvernance urbaine
-
-    6. PROJETS ET INITIATIVES :
-    - Grands projets d'infrastructure en cours
-    - Programmes de développement urbain
-    - Partenariats internationaux
-    - Initiatives de la société civile
-    - Projets de coopération décentralisée
-
-    7. COMPARAISONS RÉGIONALES :
-    - Positionnement par rapport aux autres capitales sahéliennes
-    - Benchmarking avec Dakar, Bamako, Ouagadougou
-    - Indicateurs de développement comparés
-    - Bonnes pratiques observées ailleurs
-    - Leçons apprises d'autres villes similaires
-
-    8. PERSPECTIVES D'AVENIR :
-    - Vision de développement à long terme
-    - Potentiels de croissance identifiés
-    - Défis futurs anticipés
-    - Opportunités d'investissement
-    - Scénarios d'évolution possible
-
-    Utilisez des données chiffrées précises, des références à des études récentes, et adoptez un ton analytique et professionnel. Structurez votre réponse avec des sous-titres clairs.
+    Réponse concise avec données chiffrées précises.
     """
     
     try:
@@ -121,9 +67,9 @@ def web_search_context(ville, pays, groq_api_key):
             "Content-Type": "application/json"
         }
         data = {
-            "model": "llama3-70b-8192",
+            "model": "llama3-8b-8192",
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 2000,
+            "max_tokens": 1000,
             "temperature": 0.3
         }
         response = requests.post(url, headers=headers, json=data)
@@ -287,15 +233,15 @@ def generate_hf_report(prompt, hf_token):
         response = client.chat.completions.create(
             model="meta-llama/Llama-3.1-8B-Instruct",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=4000,
+            max_tokens=2000,
             temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"Erreur Hugging Face Providers: {e}"
 
-# --- Fonction Groq ---
-def generate_groq_report(prompt, groq_api_key, model="llama3-70b-8192"):
+# --- Fonction Groq MODIFIÉE pour éviter les limites ---
+def generate_groq_report(prompt, groq_api_key, model="llama3-8b-8192"):
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {groq_api_key}",
@@ -304,7 +250,7 @@ def generate_groq_report(prompt, groq_api_key, model="llama3-70b-8192"):
     data = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4000,
+        "max_tokens": 2000,
         "temperature": 0.7
     }
     response = requests.post(url, headers=headers, json=data)
@@ -605,9 +551,9 @@ with tab1:
         context_info = ""
         if ville and pays:
             if moteur_ia == "Groq":
-                context_info = web_search_context(ville, pays, st.secrets["GROQ_API_KEY"])
+                context_info = Web_Search_context(ville, pays, st.secrets["GROQ_API_KEY"])
             else:
-                context_info = web_search_context(ville, pays, st.secrets.get("GROQ_API_KEY", ""))
+                context_info = Web_Search_context(ville, pays, st.secrets.get("GROQ_API_KEY", ""))
         
         st.info("Génération des graphiques avancés...")
         
@@ -632,100 +578,27 @@ with tab1:
         # Génération des graphiques
         graphs = generate_advanced_graphs(data_dict)
         
-        st.info("Génération du rapport IA détaillé de 20+ pages...")
+        st.info("Génération du rapport IA détaillé...")
 
-        # Prompt ULTRA-ENRICHI pour un rapport de 20+ pages
+        # Prompt RÉDUIT pour éviter les limites
         prompt = f"""
-Vous êtes un expert senior en développement urbain africain avec 25 ans d'expérience internationale. 
-Rédigez un rapport de diagnostic urbain EXTRÊMEMENT DÉTAILLÉ et PROFESSIONNEL de 20+ pages pour {ville}, {pays}.
+Rédigez un rapport de diagnostic urbain détaillé pour {ville}, {pays}.
 
-CONTEXTE ADDITIONNEL APPROFONDI :
-{context_info}
+DONNÉES :
+Société : Scolarisation primaire {scolarisation_primaire}%, secondaire {scolarisation_secondaire}%, alphabétisation {alphabetisation}%, criminalité {criminalite}, médecins {medecins}/10k, espérance vie {esperance_vie} ans
+Habitat : Eau {eau}%, électricité {electricite}%, surpeuplement {surpeuplement}, informel {informel}%, coût {cout_logement}€/m², accession {accession}%, sanitaires {sanitaires}%, satisfaction {satisfaction}%
 
-DONNÉES ANALYSÉES EN DÉTAIL :
-Section Société :
-- Scolarisation primaire : {scolarisation_primaire}%
-- Scolarisation secondaire : {scolarisation_secondaire}%
-- Alphabétisation adulte : {alphabetisation}%
-- Taux de criminalité : {criminalite}
-- Médecins pour 10k habitants : {medecins}
-- Espérance de vie : {esperance_vie} ans
+CONTEXTE : {context_info}
 
-Section Habitat :
-- Accès eau potable : {eau}%
-- Accès électricité : {electricite}%
-- Indice surpeuplement : {surpeuplement}
-- Logements informels : {informel}%
-- Coût logement : {cout_logement}€/m²
-- Taux d'accession propriété : {accession}%
-- Accès sanitaires améliorés : {sanitaires}%
-- Satisfaction logement : {satisfaction}%
+STRUCTURE (développez chaque section) :
+1. RÉSUMÉ EXÉCUTIF - Synthèse des constats et priorités
+2. CONTEXTE DÉMOGRAPHIQUE - Analyse des indicateurs sociaux
+3. ANALYSE HABITAT - État des infrastructures et logements  
+4. DÉFIS IDENTIFIÉS - Problèmes prioritaires et opportunités
+5. RECOMMANDATIONS - Actions concrètes à court/moyen terme
+6. CONCLUSION - Vision prospective
 
-Documents analysés :
-{chr(10).join(doc_texts) if doc_texts else "Aucun document fourni"}
-
-STRUCTURE OBLIGATOIRE (développez CHAQUE section sur 3-4 pages MINIMUM) :
-
-RÉSUMÉ EXÉCUTIF
-Rédigez un résumé exécutif de 2 pages complètes incluant :
-- Synthèse détaillée des principaux constats avec données chiffrées
-- Calcul et interprétation des indices de développement
-- Hiérarchisation précise des priorités d'intervention
-- Recommandations clés avec timeline et budget estimatif
-- Comparaison avec les standards internationaux
-
-CONTEXTE DÉMOGRAPHIQUE ET SOCIAL DÉTAILLÉ
-Développez sur 4 pages complètes :
-- Analyse approfondie des indicateurs éducatifs avec comparaisons régionales
-- Situation sanitaire et médicale : infrastructure, personnel, épidémiologie
-- Défis sécuritaires et sociaux : criminalité, cohésion sociale, gouvernance
-- Comparaisons détaillées avec Dakar, Bamako, Ouagadougou, Niamey
-- Projections démographiques et implications pour les services
-- Analyse des inégalités socio-spatiales et de genre
-
-ANALYSE DE L'HABITAT ET DES INFRASTRUCTURES
-Rédigez 4 pages complètes sur :
-- État détaillé des services essentiels (eau, électricité, assainissement)
-- Qualité et typologie du parc de logements par quartier
-- Problématiques d'accessibilité et d'abordabilité avec analyse financière
-- Défis de l'urbanisation informelle : cartographie, dynamiques, solutions
-- Infrastructure de transport et mobilité urbaine
-- Gestion des déchets et environnement urbain
-
-DÉFIS ET OPPORTUNITÉS IDENTIFIÉS
-Développez sur 3 pages :
-- Analyse SWOT ultra-détaillée avec matrice d'impact/probabilité
-- Identification précise des goulots d'étranglement avec solutions
-- Potentiels de développement inexploités : économique, touristique, culturel
-- Risques et vulnérabilités : climatiques, économiques, sociaux, politiques
-- Analyse des parties prenantes et de leurs intérêts
-- Benchmarking avec les meilleures pratiques africaines
-
-RECOMMANDATIONS STRATÉGIQUES
-Rédigez 4 pages complètes incluant :
-- Plan d'action détaillé à court terme (1-2 ans) avec budget et responsables
-- Stratégies à moyen terme (3-5 ans) avec jalons et indicateurs
-- Vision à long terme (10-15 ans) avec scénarios d'évolution
-- Mécanismes de financement innovants et partenariats stratégiques
-- Cadre institutionnel et réformes nécessaires
-- Système complet de suivi-évaluation avec indicateurs SMART
-
-CONCLUSION PROSPECTIVE
-Concluez sur 2 pages avec :
-- Scénarios d'évolution détaillés (optimiste, réaliste, pessimiste)
-- Conditions critiques de succès des recommandations
-- Feuille de route opérationnelle avec étapes clés
-- Mécanismes d'adaptation et de révision du plan
-- Vision transformationnelle pour 2040
-
-EXIGENCES DE QUALITÉ :
-- Utilisez un style académique et professionnel de haut niveau
-- Intégrez des données chiffrées précises et des références
-- Proposez des comparaisons avec au moins 5 villes africaines similaires
-- Incluez des recommandations concrètes, chiffrées et réalisables
-- Chaque section doit faire MINIMUM 800-1000 mots
-- Utilisez des sous-titres clairs et une structure logique
-- Adoptez une approche multidisciplinaire (urbanisme, économie, sociologie, environnement)
+Style professionnel avec données chiffrées et comparaisons régionales.
         """
 
         if moteur_ia == "OpenAI":
@@ -733,7 +606,7 @@ EXIGENCES DE QUALITÉ :
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=4000,
+                max_tokens=2000,
                 temperature=0.7,
             )
             rapport = response.choices[0].message.content
@@ -742,7 +615,7 @@ EXIGENCES DE QUALITÉ :
         elif moteur_ia == "Groq":
             rapport = generate_groq_report(prompt, st.secrets["GROQ_API_KEY"])
 
-        st.success("Rapport de 20+ pages généré avec succès !")
+        st.success("Rapport généré avec succès !")
         
         # Affichage du rapport
         st.markdown("### Rapport IA généré")
@@ -755,23 +628,23 @@ EXIGENCES DE QUALITÉ :
         with col_g1:
             if 'social_radar' in graphs:
                 st.markdown("**Indicateurs Sociaux - Vue d'ensemble**")
-                st.image(base64.b64decode(graphs["social_radar"]), use_column_width=True)
+                st.image(base64.b64decode(graphs["social_radar"]), use_container_width=True)
         
         with col_g2:
             if 'indices_development' in graphs:
                 st.markdown("**Indices de Développement Urbain**")
-                st.image(base64.b64decode(graphs["indices_development"]), use_column_width=True)
+                st.image(base64.b64decode(graphs["indices_development"]), use_container_width=True)
         
         if 'habitat_analysis' in graphs:
             st.markdown("**Analyse de l'Habitat et des Infrastructures**")
-            st.image(base64.b64decode(graphs["habitat_analysis"]), use_column_width=True)
+            st.image(base64.b64decode(graphs["habitat_analysis"]), use_container_width=True)
 
         # Génération du PDF professionnel
-        st.info("Génération du PDF professionnel de 20+ pages...")
+        st.info("Génération du PDF professionnel...")
         pdf_buffer = create_professional_pdf(rapport, ville, graphs, context_info)
         
         st.download_button(
-            label="Télécharger le Rapport PDF Professionnel (20+ pages)",
+            label="Télécharger le Rapport PDF Professionnel",
             data=pdf_buffer,
             file_name=f"Diagnostic_Urbain_{ville}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf"
