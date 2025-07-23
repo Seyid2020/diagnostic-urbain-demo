@@ -9,7 +9,19 @@ pytesseract
 pdf2image
 Pillow
 matplotlib
-
+streamlit
+openai
+pandas
+PyPDF2
+reportlab
+requests
+pytesseract
+Pillow
+pdf2image
+matplotlib
+seaborn
+numpy
+huggingface_hub
 
 openai
 pandas
