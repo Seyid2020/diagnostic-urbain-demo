@@ -28,3 +28,16 @@ pandas
 PyPDF2
 reportlab
 markdown
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+openai
+groq
+requests
+PyPDF2
+pillow
+pytesseract
+reportlab
