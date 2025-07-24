@@ -1242,3 +1242,32 @@ def main():
     """Fonction principale avec header et navigation par onglets"""
     
     # Header principal avec logo et tit
+import streamlit as st
+
+def create_header():
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 2rem 1rem; border-radius: 15px; margin-bottom: 2rem; text-align: center;'>
+        <div style='font-size:3rem;font-weight:bold;color:white;margin-bottom:0.5rem;'>AfricanCities IA Services</div>
+        <div style='font-size:1.3rem;color:#f0f8ff;margin-bottom:1rem;font-style:italic;font-weight:300;'>
+            Diagnostiquer, comprendre, transformer votre ville
+        </div>
+        <div style='font-size:1rem;color:#e6f3ff;font-weight:500;margin-top:1rem;
+                    padding:0.5rem 1rem;background:rgba(255,255,255,0.1);border-radius:25px;display:inline-block;'>
+            Centre of Urban Systems - UM6P
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def main():
+    create_header()
+    tab1, tab2, tab3 = st.tabs(["🏙️ Diagnostic", "📊 Dashboard", "🤖 Chatbot"])
+    with tab1:
+        st.write("Contenu Diagnostic")
+    with tab2:
+        st.write("Contenu Dashboard")
+    with tab3:
+        st.write("Contenu Chatbot")
+
+if __name__ == "__main__":
+    main()
