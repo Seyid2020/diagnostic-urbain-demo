@@ -455,7 +455,7 @@ def create_comprehensive_professional_pdf(sections_content, ville, graphs, table
     
     story.append(info_table)
     story.append(Spacer(1, 1*inch))
-    story.append(Paragraph("UrbanAI Diagnostic Platform", 
+    story.append(Paragraph("AfricanCities AI Diagnostic", 
                           ParagraphStyle('Footer', fontSize=14, textColor=HexColor(COLORS['accent']), 
                                        alignment=1, fontName='Helvetica-Bold')))
     story.append(PageBreak())
