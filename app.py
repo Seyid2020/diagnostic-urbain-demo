@@ -25,7 +25,7 @@ import base64
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Diagnostic Urbain Intelligent",
+    page_title="AfricanCities IA Services",
     page_icon="🏙️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -34,6 +34,48 @@ st.set_page_config(
 # CSS pour améliorer l'apparence
 st.markdown("""
 <style>
+    .header-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 1rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    .main-title {
+        font-size: 3rem;
+        font-weight: bold;
+        color: white;
+        margin-bottom: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        letter-spacing: 2px;
+    }
+    
+    .subtitle {
+        font-size: 1.3rem;
+        color: #f0f8ff;
+        margin-bottom: 1rem;
+        font-style: italic;
+        font-weight: 300;
+    }
+    
+    .institution {
+        font-size: 1rem;
+        color: #e6f3ff;
+        font-weight: 500;
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 25px;
+        display: inline-block;
+        backdrop-filter: blur(10px);
+    }
+    
+    .logo-container {
+        margin-bottom: 1rem;
+    }
+    
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
@@ -110,6 +152,19 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+def create_header():
+    """Crée le header avec logo et titres"""
+    st.markdown("""
+    <div class="header-container">
+        <div class="logo-container">
+            🏙️
+        </div>
+        <div class="main-title">AfricanCities IA Services</div>
+        <div class="subtitle">Diagnostiquer, comprendre, transformer votre ville</div>
+        <div class="institution">Centre of Urban Systems - UM6P</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def initialize_ai_clients():
     """Initialise les clients IA"""
@@ -1184,19 +1239,6 @@ def chatbot_tab():
         st.rerun()
 
 def main():
-    """Fonction principale avec navigation par onglets"""
+    """Fonction principale avec header et navigation par onglets"""
     
-    # Navigation par onglets
-    tab1, tab2, tab3 = st.tabs(["🏙️ Diagnostic", "📊 Dashboard", "🤖 Chatbot"])
-    
-    with tab1:
-        diagnostic_tab()
-    
-    with tab2:
-        dashboard_tab()
-    
-    with tab3:
-        chatbot_tab()
-
-if __name__ == "__main__":
-    main()
+    # Header principal avec logo et tit
