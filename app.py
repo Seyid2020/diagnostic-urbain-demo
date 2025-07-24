@@ -1241,3 +1241,21 @@ def chatbot_tab():
 def main():
     """Fonction principale avec header et navigation par onglets"""
     create_header()
+
+
+def main():
+    """Fonction principale avec header et navigation par onglets"""
+    create_header()
+    
+    # Navigation par onglets
+    tab1, tab2, tab3 = st.tabs(["🏙️ Diagnostic", "📊 Dashboard", "🤖 Chatbot"])
+    
+    with tab1:
+        diagnostic_tab()
+    with tab2:
+        dashboard_tab()
+    with tab3:
+        chatbot_tab()
+
+if __name__ == "__main__":
+    main()
