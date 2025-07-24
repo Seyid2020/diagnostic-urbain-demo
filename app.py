@@ -90,6 +90,24 @@ st.markdown("""
         color: #2c3e50;
         font-size: 1rem;
     }
+    
+    .form-section {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        border-left: 4px solid #007bff;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -370,42 +388,159 @@ def generate_professional_pdf_report(city_name, report_data, charts_data):
     buffer.seek(0)
     return buffer
 
-def main():
-    # En-tête principal
+def diagnostic_tab():
+    """Onglet Diagnostic avec formulaire détaillé"""
     st.markdown('<div class="main-header">🏙️ DIAGNOSTIC URBAIN INTELLIGENT</div>', unsafe_allow_html=True)
     
     # Initialisation des clients IA
     clients = initialize_ai_clients()
     
-    # Sidebar pour la configuration
+    # Formulaire détaillé dans la sidebar
     with st.sidebar:
-        st.header("⚙️ Configuration")
+        st.header("⚙️ Configuration du Diagnostic")
         
+        # Informations générales
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🌍 Informations Générales")
         city_name = st.text_input("Nom de la ville", value="Nouakchott")
         country = st.text_input("Pays", value="Mauritanie")
+        region = st.text_input("Région/Province", value="Nouakchott")
+        diagnostic_date = st.date_input("Date du diagnostic", value=datetime.now())
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        st.subheader("📊 Données de base")
-        population = st.number_input("Population (habitants)", value=1200000, step=10000)
-        growth_rate = st.number_input("Taux de croissance (%)", value=3.5, step=0.1)
+        # Données démographiques
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("👥 Données Démographiques")
+        population = st.number_input("Population totale (habitants)", value=1200000, step=10000)
+        growth_rate = st.number_input("Taux de croissance annuel (%)", value=3.5, step=0.1)
         urban_area = st.number_input("Superficie urbaine (km²)", value=1000, step=10)
+        density = st.number_input("Densité urbaine (hab/km²)", value=int(population/urban_area), step=100)
+        youth_percentage = st.slider("Pourcentage de jeunes (0-25 ans) (%)", 0, 100, 60)
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        st.subheader("🏠 Indicateurs d'habitat")
+        # Infrastructures de base
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🏗️ Infrastructures de Base")
         water_access = st.slider("Accès à l'eau potable (%)", 0, 100, 45)
         electricity_access = st.slider("Accès à l'électricité (%)", 0, 100, 42)
         sanitation_access = st.slider("Accès à l'assainissement (%)", 0, 100, 25)
+        road_quality = st.selectbox("Qualité du réseau routier", ["Très mauvaise", "Mauvaise", "Moyenne", "Bonne", "Très bonne"])
+        internet_access = st.slider("Accès à Internet (%)", 0, 100, 35)
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        st.subheader("📄 Documents techniques")
+        # Logement et habitat
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🏠 Logement et Habitat")
+        housing_deficit = st.number_input("Déficit en logements", value=50000, step=1000)
+        informal_settlements = st.slider("Population en habitat informel (%)", 0, 100, 40)
+        housing_cost = st.number_input("Coût moyen du logement (USD/m²)", value=200, step=10)
+        construction_materials = st.multiselect(
+            "Matériaux de construction dominants",
+            ["Béton", "Brique", "Terre", "Tôle", "Bois", "Autres"],
+            default=["Béton", "Tôle"]
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Économie et emploi
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("💼 Économie et Emploi")
+        unemployment_rate = st.slider("Taux de chômage (%)", 0, 100, 25)
+        informal_economy = st.slider("Économie informelle (%)", 0, 100, 70)
+        main_sectors = st.multiselect(
+            "Secteurs économiques principaux",
+            ["Agriculture", "Pêche", "Commerce", "Services", "Industrie", "Tourisme", "Mines", "Autres"],
+            default=["Commerce", "Services", "Pêche"]
+        )
+        gdp_per_capita = st.number_input("PIB par habitant (USD)", value=1500, step=100)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Services sociaux
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🏥 Services Sociaux")
+        health_facilities = st.number_input("Nombre d'établissements de santé", value=15, step=1)
+        schools = st.number_input("Nombre d'écoles", value=120, step=5)
+        literacy_rate = st.slider("Taux d'alphabétisation (%)", 0, 100, 65)
+        infant_mortality = st.number_input("Mortalité infantile (pour 1000)", value=45, step=1)
+        life_expectancy = st.number_input("Espérance de vie (années)", value=65, step=1)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Environnement et climat
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🌱 Environnement et Climat")
+        climate_risks = st.multiselect(
+            "Risques climatiques principaux",
+            ["Inondations", "Sécheresse", "Érosion côtière", "Tempêtes de sable", "Canicules", "Autres"],
+            default=["Inondations", "Sécheresse"]
+        )
+        waste_management = st.selectbox("Gestion des déchets", ["Très mauvaise", "Mauvaise", "Moyenne", "Bonne", "Très bonne"])
+        green_spaces = st.slider("Espaces verts par habitant (m²)", 0, 50, 5)
+        air_quality = st.selectbox("Qualité de l'air", ["Très mauvaise", "Mauvaise", "Moyenne", "Bonne", "Très bonne"])
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Transport et mobilité
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🚌 Transport et Mobilité")
+        public_transport = st.selectbox("Transport public", ["Inexistant", "Très limité", "Limité", "Développé", "Très développé"])
+        vehicle_ownership = st.slider("Taux de motorisation (véhicules/1000 hab)", 0, 500, 80)
+        traffic_congestion = st.selectbox("Congestion routière", ["Très faible", "Faible", "Modérée", "Forte", "Très forte"])
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Documents techniques
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("📄 Documents Techniques")
         uploaded_files = st.file_uploader(
             "Télécharger des documents (PDF)",
             type=['pdf'],
-            accept_multiple_files=True
+            accept_multiple_files=True,
+            help="Plans d'urbanisme, études, rapports, etc."
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Type et objectif du diagnostic
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("🎯 Type et Objectif du Diagnostic")
+        diagnostic_type = st.selectbox(
+            "Type de diagnostic",
+            ["Diagnostic général", "Diagnostic thématique - Logement", "Diagnostic thématique - Transport", 
+             "Diagnostic thématique - Environnement", "Diagnostic thématique - Économie", "Diagnostic thématique - Social"]
         )
         
-        generate_report = st.button("🚀 Générer le rapport complet", type="primary")
+        diagnostic_objective = st.text_area(
+            "Objectif spécifique du diagnostic",
+            value="Évaluer l'état actuel du développement urbain et identifier les priorités d'intervention pour améliorer les conditions de vie des habitants.",
+            height=100
+        )
+        
+        target_audience = st.multiselect(
+            "Public cible du rapport",
+            ["Autorités locales", "Gouvernement national", "Bailleurs de fonds", "ONG", "Secteur privé", "Citoyens", "Chercheurs"],
+            default=["Autorités locales", "Bailleurs de fonds"]
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Commentaires libres
+        st.markdown('<div class="form-section">', unsafe_allow_html=True)
+        st.subheader("💭 Commentaires et Observations")
+        additional_comments = st.text_area(
+            "Commentaires libres, contexte particulier, défis spécifiques...",
+            height=120,
+            placeholder="Décrivez ici tout élément de contexte important, défis particuliers, projets en cours, etc."
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        generate_report = st.button("🚀 Générer le rapport complet", type="primary", use_container_width=True)
     
-    # Interface principale
+    # Interface principale pour le rapport
     if generate_report:
         with st.spinner("Génération du rapport en cours..."):
+            
+            # Affichage des informations de configuration
+            st.info(f"""
+            **Diagnostic configuré pour:** {city_name}, {country}  
+            **Type:** {diagnostic_type}  
+            **Population:** {population:,} habitants  
+            **Date:** {diagnostic_date.strftime('%d/%m/%Y')}
+            """)
             
             # Table des matières dynamique
             st.markdown('<div class="section-header">📋 TABLE DES MATIÈRES</div>', unsafe_allow_html=True)
@@ -430,8 +565,13 @@ def main():
             
             executive_prompt = f"""
             Rédigez un résumé exécutif professionnel de 400 mots pour le diagnostic urbain de {city_name}, {country}.
+            Type de diagnostic: {diagnostic_type}
+            Objectif: {diagnostic_objective}
             Population: {population:,} habitants, croissance: {growth_rate}%.
             Accès eau: {water_access}%, électricité: {electricity_access}%, assainissement: {sanitation_access}%.
+            Chômage: {unemployment_rate}%, habitat informel: {informal_settlements}%.
+            Risques climatiques: {', '.join(climate_risks) if climate_risks else 'Non spécifiés'}.
+            Contexte particulier: {additional_comments if additional_comments else 'Aucun commentaire spécifique'}.
             Incluez: situation actuelle, défis principaux, opportunités, recommandations clés.
             Style: professionnel, sans emojis, paragraphes structurés.
             """
@@ -447,6 +587,7 @@ def main():
             
             demo_prompt = f"""
             Analysez le profil démographique de {city_name} avec {population:,} habitants et {growth_rate}% de croissance.
+            Densité: {density} hab/km², jeunes (0-25 ans): {youth_percentage}%.
             Détaillez: structure par âge, migration, densité urbaine, projections 2030.
             Comparaisons régionales avec autres capitales sahéliennes.
             300 mots, style analytique professionnel.
@@ -464,11 +605,12 @@ def main():
             
             socio_prompt = f"""
             Analysez le contexte socio-économique de {city_name}:
-            - Secteurs économiques dominants
-            - Emploi et chômage urbain
-            - Niveaux de revenus et pauvreté urbaine
-            - Éducation et santé
-            - Inégalités socio-spatiales
+            - Secteurs économiques dominants: {', '.join(main_sectors) if main_sectors else 'Non spécifiés'}
+            - Chômage: {unemployment_rate}%, économie informelle: {informal_economy}%
+            - PIB par habitant: {gdp_per_capita} USD
+            - Taux d'alphabétisation: {literacy_rate}%
+            - Mortalité infantile: {infant_mortality}‰, espérance de vie: {life_expectancy} ans
+            - Établissements de santé: {health_facilities}, écoles: {schools}
             350 mots, données chiffrées, analyse approfondie.
             """
             
@@ -478,13 +620,13 @@ def main():
             # Métriques socio-économiques
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Taux de chômage", "23.4%", "-2.1%")
+                st.metric("Taux de chômage", f"{unemployment_rate}%", "-2.1%")
             with col2:
-                st.metric("PIB par habitant", "1,850 USD", "+4.2%")
+                st.metric("PIB par habitant", f"{gdp_per_capita} USD", "+4.2%")
             with col3:
-                st.metric("Taux d'alphabétisation", "67%", "+3.5%")
+                st.metric("Taux d'alphabétisation", f"{literacy_rate}%", "+3.5%")
             with col4:
-                st.metric("Indice de pauvreté", "31.2%", "-1.8%")
+                st.metric("Économie informelle", f"{informal_economy}%", "-1.8%")
             
             # 3. ANALYSE DE L'HABITAT ET DES INFRASTRUCTURES
             st.markdown('<div class="section-header">3. ANALYSE DE L\'HABITAT ET DES INFRASTRUCTURES</div>', unsafe_allow_html=True)
@@ -494,12 +636,12 @@ def main():
             
             housing_prompt = f"""
             Analysez l'état du parc de logements à {city_name}:
-            - Types de logements et matériaux de construction
-            - Qualité et vétusté du bâti
-            - Surpeuplement et conditions d'habitabilité
-            - Marché immobilier et accessibilité financière
-            - Quartiers informels et bidonvilles
-            Accès eau: {water_access}%, électricité: {electricity_access}%.
+            - Déficit en logements: {housing_deficit:,} unités
+            - Population en habitat informel: {informal_settlements}%
+            - Coût du logement: {housing_cost} USD/m²
+            - Matériaux dominants: {', '.join(construction_materials) if construction_materials else 'Non spécifiés'}
+            - Accès eau: {water_access}%, électricité: {electricity_access}%
+            Détaillez: types de logements, qualité du bâti, surpeuplement, marché immobilier, quartiers informels.
             400 mots, analyse technique détaillée.
             """
             
@@ -515,12 +657,13 @@ def main():
             
             infra_prompt = f"""
             Évaluez les infrastructures de base de {city_name}:
-            - Réseau d'approvisionnement en eau (couverture: {water_access}%)
-            - Système électrique (couverture: {electricity_access}%)
-            - Assainissement et gestion des eaux usées ({sanitation_access}%)
-            - Réseau routier et transport urbain
-            - Télécommunications et numérique
-            - Gestion des déchets solides
+            - Eau potable: {water_access}% de couverture
+            - Électricité: {electricity_access}% de couverture
+            - Assainissement: {sanitation_access}% de couverture
+            - Qualité des routes: {road_quality}
+            - Accès Internet: {internet_access}%
+            - Gestion des déchets: {waste_management}
+            - Transport public: {public_transport}
             450 mots, évaluation technique approfondie.
             """
             
@@ -539,12 +682,12 @@ def main():
             
             challenges_prompt = f"""
             Identifiez et analysez les défis majeurs de {city_name}:
-            - Croissance urbaine rapide et planification insuffisante
-            - Déficit en logements décents et abordables
+            - Croissance démographique rapide ({growth_rate}%) et planification urbaine
+            - Déficit en logements ({housing_deficit:,} unités) et habitat informel ({informal_settlements}%)
             - Insuffisance des services de base (eau: {water_access}%, électricité: {electricity_access}%)
-            - Vulnérabilité climatique et environnementale
-            - Gouvernance urbaine et capacités institutionnelles
-            - Financement du développement urbain
+            - Chômage élevé ({unemployment_rate}%) et économie informelle ({informal_economy}%)
+            - Risques climatiques: {', '.join(climate_risks) if climate_risks else 'Non spécifiés'}
+            - Qualité de l'air: {air_quality}, gestion des déchets: {waste_management}
             400 mots, analyse critique et factuelle.
             """
             
@@ -556,9 +699,9 @@ def main():
             
             opportunities_prompt = f"""
             Analysez les opportunités de développement pour {city_name}:
-            - Potentiel économique et avantages géographiques
-            - Ressources naturelles et énergétiques
-            - Capital humain et démographie favorable
+            - Secteurs économiques porteurs: {', '.join(main_sectors) if main_sectors else 'À identifier'}
+            - Population jeune ({youth_percentage}% de moins de 25 ans)
+            - Potentiel de développement urbain sur {urban_area} km²
             - Coopération internationale et financement
             - Innovation technologique et villes intelligentes
             - Partenariats public-privé
@@ -578,9 +721,10 @@ def main():
             Formulez des recommandations prioritaires à court terme pour {city_name}:
             - Amélioration urgente de l'accès à l'eau potable (actuellement {water_access}%)
             - Extension du réseau électrique (actuellement {electricity_access}%)
-            - Programmes d'urgence pour l'habitat précaire
+            - Programmes d'urgence pour l'habitat précaire ({informal_settlements}% de la population)
+            - Création d'emplois face au chômage de {unemployment_rate}%
             - Renforcement des capacités institutionnelles
-            - Mobilisation de financements d'urgence
+            - Gestion des risques climatiques: {', '.join(climate_risks) if climate_risks else 'À définir'}
             300 mots, recommandations concrètes et réalisables.
             """
             
@@ -592,11 +736,12 @@ def main():
             
             medium_term_prompt = f"""
             Développez des stratégies à moyen terme pour {city_name}:
-            - Planification urbaine intégrée et durable
+            - Planification urbaine intégrée pour gérer la croissance de {growth_rate}%
             - Développement de nouveaux quartiers planifiés
             - Modernisation des infrastructures existantes
-            - Diversification économique urbaine
+            - Diversification économique (secteurs actuels: {', '.join(main_sectors) if main_sectors else 'À développer'})
             - Renforcement de la résilience climatique
+            - Amélioration du transport public (actuellement: {public_transport})
             350 mots, approche stratégique et intégrée.
             """
             
@@ -609,10 +754,11 @@ def main():
             long_term_prompt = f"""
             Esquissez une vision à long terme pour {city_name}:
             - Transformation en ville intelligente et durable
-            - Hub économique régional
+            - Hub économique régional basé sur {', '.join(main_sectors) if main_sectors else 'les secteurs porteurs'}
             - Modèle de développement urbain africain
             - Objectifs de développement durable (ODD 11)
             - Innovation et technologies urbaines
+            - Résilience face aux défis climatiques
             300 mots, vision ambitieuse mais réaliste.
             """
             
@@ -627,9 +773,9 @@ def main():
             # Indicateurs synthétiques
             indicators_data = {
                 'Indicateur': ['Accès eau potable', 'Accès électricité', 'Assainissement', 'Logement décent', 'Transport public'],
-                'Valeur actuelle': [water_access, electricity_access, sanitation_access, 35, 25],
+                'Valeur actuelle': [water_access, electricity_access, sanitation_access, 100-informal_settlements, 30 if public_transport in ["Développé", "Très développé"] else 15],
                 'Objectif 2030': [80, 75, 60, 70, 60],
-                'Écart': [80-water_access, 75-electricity_access, 60-sanitation_access, 35, 35]
+                'Écart': [80-water_access, 75-electricity_access, 60-sanitation_access, 70-(100-informal_settlements), 45]
             }
             
             df_indicators = pd.DataFrame(indicators_data)
@@ -637,7 +783,9 @@ def main():
             
             # Graphique radar des performances
             categories = ['Eau', 'Électricité', 'Assainissement', 'Logement', 'Transport', 'Santé', 'Éducation']
-            current_values = [water_access, electricity_access, sanitation_access, 35, 25, 45, 67]
+            current_values = [water_access, electricity_access, sanitation_access, 100-informal_settlements, 
+                            30 if public_transport in ["Développé", "Très développé"] else 15, 
+                            max(0, 100-infant_mortality), literacy_rate]
             target_values = [80, 75, 60, 70, 60, 70, 85]
             
             fig_radar = go.Figure()
@@ -679,7 +827,8 @@ def main():
             - Potentiel de transformation urbaine
             - Conditions de succès des recommandations
             - Rôle dans le développement régional
-            - Appel à l'action pour les parties prenantes
+            - Appel à l'action pour les parties prenantes: {', '.join(target_audience) if target_audience else 'toutes les parties prenantes'}
+            Contexte spécifique: {additional_comments if additional_comments else 'Aucun élément particulier'}
             400 mots, ton prospectif et mobilisateur.
             """
             
@@ -715,11 +864,339 @@ def main():
             st.markdown("### 📋 Métadonnées du rapport")
             st.info(f"""
             **Ville analysée:** {city_name}, {country}  
+            **Type de diagnostic:** {diagnostic_type}  
             **Date de génération:** {datetime.now().strftime('%d/%m/%Y à %H:%M')}  
             **Population:** {population:,} habitants  
             **Taux de croissance:** {growth_rate}%  
+            **Public cible:** {', '.join(target_audience) if target_audience else 'Non spécifié'}  
             **Plateforme:** UrbanAI Diagnostic Platform v2.0
             """)
+
+def dashboard_tab():
+    """Onglet Dashboard avec visualisations interactives"""
+    st.markdown('<div class="main-header">📊 TABLEAU DE BORD URBAIN</div>', unsafe_allow_html=True)
+    
+    # Métriques principales
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            label="Population urbaine",
+            value="1.2M",
+            delta="3.5%",
+            help="Croissance annuelle de la population"
+        )
+    
+    with col2:
+        st.metric(
+            label="Accès à l'eau",
+            value="45%",
+            delta="-5%",
+            delta_color="inverse",
+            help="Pourcentage de la population avec accès à l'eau potable"
+        )
+    
+    with col3:
+        st.metric(
+            label="Taux de chômage",
+            value="23.4%",
+            delta="-2.1%",
+            delta_color="inverse",
+            help="Évolution du taux de chômage"
+        )
+    
+    with col4:
+        st.metric(
+            label="PIB par habitant",
+            value="1,850 USD",
+            delta="4.2%",
+            help="Croissance du PIB par habitant"
+        )
+    
+    st.markdown("---")
+    
+    # Graphiques interactifs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🏠 Accès aux Services de Base")
+        
+        # Graphique en barres pour les services
+        services_data = {
+            'Service': ['Eau potable', 'Électricité', 'Assainissement', 'Internet', 'Transport public'],
+            'Accès (%)': [45, 42, 25, 35, 20],
+            'Objectif 2030 (%)': [80, 75, 60, 70, 50]
+        }
+        
+        df_services = pd.DataFrame(services_data)
+        
+        fig_services = px.bar(
+            df_services, 
+            x='Service', 
+            y=['Accès (%)', 'Objectif 2030 (%)'],
+            title="Accès aux Services vs Objectifs 2030",
+            barmode='group',
+            color_discrete_map={'Accès (%)': '#ff7f7f', 'Objectif 2030 (%)': '#7fbfff'}
+        )
+        
+        st.plotly_chart(fig_services, use_container_width=True)
+    
+    with col2:
+        st.subheader("👥 Structure Démographique")
+        
+        # Graphique en secteurs pour les groupes d'âge
+        age_data = {
+            'Groupe d\'âge': ['0-14 ans', '15-64 ans', '65+ ans'],
+            'Population (%)': [42.5, 54.3, 3.2]
+        }
+        
+        fig_age = px.pie(
+            values=age_data['Population (%)'],
+            names=age_data['Groupe d\'âge'],
+            title="Répartition par Groupe d'Âge"
+        )
+        
+        st.plotly_chart(fig_age, use_container_width=True)
+    
+    # Graphique de tendance
+    st.subheader("📈 Évolution de la Population")
+    
+    years = list(range(2015, 2026))
+    population_data = [950000, 985000, 1020000, 1055000, 1090000, 1125000, 1160000, 1195000, 1230000, 1265000, 1300000]
+    
+    fig_trend = px.line(
+        x=years,
+        y=population_data,
+        title="Croissance Démographique 2015-2025",
+        labels={'x': 'Année', 'y': 'Population'}
+    )
+    
+    fig_trend.add_scatter(
+        x=[2022], 
+        y=[1200000], 
+        mode='markers', 
+        marker=dict(size=10, color='red'),
+        name='Situation actuelle'
+    )
+    
+    st.plotly_chart(fig_trend, use_container_width=True)
+    
+    # Carte de chaleur des indicateurs
+    st.subheader("🗺️ Carte de Performance par Secteur")
+    
+    sectors = ['Centre', 'Nord', 'Sud', 'Est', 'Ouest']
+    indicators = ['Eau', 'Électricité', 'Assainissement', 'Routes', 'Santé', 'Éducation']
+    
+    # Données simulées pour la carte de chaleur
+    np.random.seed(42)
+    heatmap_data = np.random.randint(20, 80, size=(len(sectors), len(indicators)))
+    
+    fig_heatmap = px.imshow(
+        heatmap_data,
+        x=indicators,
+        y=sectors,
+        title="Performance par Secteur Géographique (%)",
+        color_continuous_scale="RdYlGn",
+        aspect="auto"
+    )
+    
+    st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    # Indicateurs de performance
+    st.subheader("🎯 Indicateurs de Performance Clés")
+    
+    kpi_data = {
+        'Indicateur': [
+            'Densité urbaine (hab/km²)',
+            'Espaces verts (m²/hab)',
+            'Déchets collectés (%)',
+            'Mortalité infantile (‰)',
+            'Taux d\'alphabétisation (%)',
+            'Accès aux soins (min)'
+        ],
+        'Valeur actuelle': [1200, 5, 60, 45, 65, 25],
+        'Objectif': [1000, 15, 90, 25, 85, 15],
+        'Statut': ['🔴', '🔴', '🟡', '🔴', '🟡', '🔴']
+    }
+    
+    df_kpi = pd.DataFrame(kpi_data)
+    st.dataframe(df_kpi, use_container_width=True)
+    
+    # Analyse comparative
+    st.subheader("🌍 Comparaison Régionale")
+    
+    cities_comparison = {
+        'Ville': ['Nouakchott', 'Dakar', 'Bamako', 'Niamey', 'Ouagadougou'],
+        'Population (M)': [1.2, 3.1, 2.4, 1.3, 2.2],
+        'PIB/hab (USD)': [1850, 2400, 1200, 800, 1100],
+        'Accès eau (%)': [45, 85, 60, 55, 70],
+        'Accès électricité (%)': [42, 90, 65, 45, 75]
+    }
+    
+    df_comparison = pd.DataFrame(cities_comparison)
+    
+    fig_comparison = px.scatter(
+        df_comparison,
+        x='PIB/hab (USD)',
+        y='Accès eau (%)',
+        size='Population (M)',
+        color='Ville',
+        title="Comparaison des Capitales Sahéliennes",
+        hover_data=['Accès électricité (%)']
+    )
+    
+    st.plotly_chart(fig_comparison, use_container_width=True)
+
+def chatbot_tab():
+    """Onglet Chatbot pour assistance IA"""
+    st.markdown('<div class="main-header">🤖 ASSISTANT IA URBAIN</div>', unsafe_allow_html=True)
+    
+    # Initialisation des clients IA
+    clients = initialize_ai_clients()
+    
+    # Interface du chatbot
+    st.markdown("""
+    ### 💬 Posez vos questions sur le développement urbain
+    
+    Cet assistant IA peut vous aider avec :
+    - **Analyse de données urbaines** 📊
+    - **Recommandations de politiques** 🏛️
+    - **Comparaisons entre villes** 🌍
+    - **Interprétation d'indicateurs** 📈
+    - **Stratégies de développement** 🚀
+    """)
+    
+    # Historique des conversations
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {
+                "role": "assistant", 
+                "content": "Bonjour ! Je suis votre assistant IA spécialisé en développement urbain. Comment puis-je vous aider aujourd'hui ?"
+            }
+        ]
+    
+    # Affichage des messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+    
+    # Zone de saisie
+    if prompt := st.chat_input("Tapez votre question ici..."):
+        # Ajout du message utilisateur
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Génération de la réponse
+        with st.chat_message("assistant"):
+            with st.spinner("Réflexion en cours..."):
+                
+                # Contexte spécialisé pour l'urbanisme
+                system_prompt = """
+                Vous êtes un expert en développement urbain et planification urbaine, spécialisé dans les villes africaines.
+                Vous aidez les urbanistes, décideurs et chercheurs avec des analyses précises et des recommandations pratiques.
+                
+                Vos domaines d'expertise incluent :
+                - Planification urbaine et aménagement du territoire
+                - Infrastructures urbaines (eau, électricité, transport, assainissement)
+                - Habitat et logement social
+                - Économie urbaine et développement local
+                - Gouvernance urbaine et participation citoyenne
+                - Résilience climatique et développement durable
+                - Démographie urbaine et migration
+                - Services urbains de base
+                
+                Répondez de manière professionnelle, avec des données concrètes quand possible, et proposez des solutions pratiques.
+                """
+                
+                full_prompt = f"""
+                {system_prompt}
+                
+                Question de l'utilisateur : {prompt}
+                
+                Contexte : Nous travaillons sur un diagnostic urbain pour des villes africaines, notamment Nouakchott en Mauritanie.
+                """
+                
+                response = generate_enhanced_content(full_prompt, clients, 1000)
+                st.markdown(response)
+                
+                # Ajout de la réponse à l'historique
+                st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # Suggestions de questions
+    st.markdown("---")
+    st.markdown("### 💡 Questions suggérées")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🏠 Comment améliorer l'accès au logement décent ?"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Comment améliorer l'accès au logement décent ?"
+            })
+            st.rerun()
+        
+        if st.button("💧 Stratégies pour l'accès à l'eau potable"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Quelles sont les meilleures stratégies pour améliorer l'accès à l'eau potable en milieu urbain africain ?"
+            })
+            st.rerun()
+        
+        if st.button("🚌 Développer le transport public"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Comment développer un système de transport public efficace dans une ville en croissance rapide ?"
+            })
+            st.rerun()
+    
+    with col2:
+        if st.button("📊 Interpréter les indicateurs urbains"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Comment interpréter et utiliser les indicateurs urbains pour la prise de décision ?"
+            })
+            st.rerun()
+        
+        if st.button("🌱 Résilience climatique urbaine"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Quelles mesures prendre pour renforcer la résilience climatique d'une ville sahélienne ?"
+            })
+            st.rerun()
+        
+        if st.button("💼 Créer des emplois urbains"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Quelles stratégies pour créer des emplois durables en milieu urbain africain ?"
+            })
+            st.rerun()
+    
+    # Bouton pour effacer l'historique
+    if st.button("🗑️ Effacer la conversation", type="secondary"):
+        st.session_state.messages = [
+            {
+                "role": "assistant", 
+                "content": "Bonjour ! Je suis votre assistant IA spécialisé en développement urbain. Comment puis-je vous aider aujourd'hui ?"
+            }
+        ]
+        st.rerun()
+
+def main():
+    """Fonction principale avec navigation par onglets"""
+    
+    # Navigation par onglets
+    tab1, tab2, tab3 = st.tabs(["🏙️ Diagnostic", "📊 Dashboard", "🤖 Chatbot"])
+    
+    with tab1:
+        diagnostic_tab()
+    
+    with tab2:
+        dashboard_tab()
+    
+    with tab3:
+        chatbot_tab()
 
 if __name__ == "__main__":
     main()
