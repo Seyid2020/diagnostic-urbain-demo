@@ -1259,3 +1259,69 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+import wbdata
+from bs4 import BeautifulSoup
+
+def auto_collector_tab():
+    st.markdown('<div class="main-header">🔍 COLLECTE AUTOMATIQUE D\'INDICATEURS</div>', unsafe_allow_html=True)
+    st.markdown("""
+    ### 🤖 Collecte intelligente de données urbaines
+    Ce module recherche automatiquement des indicateurs urbains depuis :
+    - Open Data gouvernementaux
+    - Bases internationales (Banque Mondiale, ONU, etc.)
+    - Rapports officiels et études sectorielles
+    """)
+    with st.form("auto_collection_form"):
+        st.subheader("⚙️ Configuration de la collecte")
+        city = st.text_input("Ville cible", value="Nouakchott")
+        country = st.text_input("Pays", value="Mauritanie")
+        year = st.selectbox("Année de référence", options=list(range(2024, 2015, -1)), index=0)
+        collect_button = st.form_submit_button("🚀 Lancer la collecte automatique", type="primary")
+    if collect_button:
+        with st.spinner(f"Collecte en cours pour {city}, {country} ({year})..."):
+            data, log = collect_from_worldbank(country, year)
+            st.success(f"✅ Collecte terminée !")
+            st.write("**Résultats des indicateurs collectés :**")
+            st.write(data)
+            st.write("**Log de collecte :**")
+            st.write(log)
+
+def collect_from_worldbank(country, year):
+    """Exemple simple de collecte World Bank API"""
+    indicators = {
+        "Taux de scolarisation primaire": "SE.PRM.NENR",
+        "Taux d'alphabétisation": "SE.ADT.LITR.ZS",
+        "Espérance de vie": "SP.DYN.LE00.IN",
+        "Accès à l'eau potable": "SH.H2O.BASW.ZS",
+        "Accès à l'électricité": "EG.ELC.ACCS.ZS",
+        "Accès à Internet": "IT.NET.USER.ZS",
+        "Taux de chômage": "SL.UEM.TOTL.ZS",
+        "PIB par habitant": "NY.GDP.PCAP.CD"
+    }
+    log = []
+    data = {}
+    try:
+        countries = wbdata.get_country(display=False)
+        country_code = None
+        for c in countries:
+            if country.lower() in c['name'].lower():
+                country_code = c['id']
+                break
+        if not country_code:
+            log.append("Pays non trouvé dans la base World Bank.")
+            return data, log
+        for label, code in indicators.items():
+            try:
+                df = wbdata.get_dataframe({code: label}, country=country_code, data_date=(datetime(year,1,1), datetime(year,12,31)))
+                value = df.iloc[0,0] if not df.empty else "NaN"
+                data[label] = value
+                log.append(f"{label}: {value}")
+            except Exception as e:
+                data[label] = "NaN"
+                log.append(f"{label}: Erreur {e}")
+    except Exception as e:
+        log.append(f"Erreur générale: {e}")
+    return data, log
