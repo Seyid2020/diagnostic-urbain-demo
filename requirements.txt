@@ -41,3 +41,5 @@ PyPDF2
 pillow
 pytesseract
 reportlab
+beautifulsoup4
+wbdata
