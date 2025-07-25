@@ -35,12 +35,11 @@ def auto_collector_tab():
                 st.warning("Aucune donnée disponible pour cette ville.")
 
 def collect_from_worldbank(city):
-    # Exemple simple : collecte du PIB par habitant pour le pays Mauritanie (code ISO: MRT)
-    # En pratique, il faudrait mapper la ville au pays et aux indicateurs pertinents
+    # Exemple simple : collecte du PIB par habitant pour la Mauritanie (code ISO: MR)
     country_code = "MR"  # Code ISO 2 lettres pour Mauritanie
     indicators = {"NY.GDP.PCAP.CD": "PIB par habitant (USD)"}
     try:
-        df = wbdata.get_dataframe(indicators, country=country_code, convert_date=False)
+        df = wbdata.get_dataframe(indicators, country=country_code)
         df = df.reset_index()
         df = df.rename(columns={"date": "Année"})
         return df
