@@ -73,34 +73,42 @@ def collect_all_indicators(country_code="MR"):
     Si un code échoue → colonne remplie de NaN.
     Retourne un DataFrame fusionné, indexé par Année (descendant).
     """
-    # Base d’années 1960 → année courante (desc)
     current_year = datetime.now().year
     base_df = pd.DataFrame({"Année": list(range(current_year, 1959, -1))})
-    dfs = []   # DataFrames individuels
-    
+    dfs = []
+
     for ind_name, meta in indicators_catalog.items():
         if meta["source"] != "Banque mondiale":
-            # Source non WB : on crée colonne NaN directement
             tmp = base_df.copy()
             tmp[ind_name] = pd.NA
             dfs.append(tmp)
             continue
-        
+
         code = meta["code"]
         try:
-            # wbdata renvoie (index=date, series=valeur)
-            df = wbdata.get_dataframe({code: ind_name},
-                                      country=country_code)
-            df = df.reset_index().rename(columns={"date": "Année"})
-            dfs.append(df)
+            df = wbdata.get_dataframe({code: ind_name}, country=country_code)
+            if df.empty or df[ind_name].isnull().all():
+                # Si aucune donnée, colonne NaN
+                tmp = base_df.copy()
+                tmp[ind_name] = pd.NA
+                dfs.append(tmp)
+            else:
+                df = df.reset_index().rename(columns={"date": "Année"})
+                # S'assurer que Année est bien un int
+                df["Année"] = df["Année"].astype(int)
+                # Merge avec base_df pour avoir toutes les années
+                tmp = pd.merge(base_df, df, on="Année", how="left")
+                dfs.append(tmp[["Année", ind_name]])
         except Exception:
-            # En cas d’erreur (code inexistant, etc.) → colonne NaN
             tmp = base_df.copy()
             tmp[ind_name] = pd.NA
             dfs.append(tmp)
-    
+
     # Fusionner toutes les colonnes sur 'Année'
-    df_final = reduce(lambda left, right: pd.merge(left, right, on="Année", how="outer"), dfs)
+    df_final = base_df.copy()
+    for d in dfs:
+        df_final = pd.merge(df_final, d, on="Année", how="left")
+    df_final = df_final.loc[:,~df_final.columns.duplicated()]
     df_final.sort_values("Année", ascending=False, inplace=True)
     return df_final
 
