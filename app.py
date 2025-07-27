@@ -15,6 +15,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+import io
+import base64
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. CATALOGUE DES INDICATEURS (34 pour l'exemple, extensible à 65)
@@ -125,23 +133,328 @@ def calculate_dimension_score(data, dimension):
     
     for ind in dimension_indicators:
         if ind in latest_data and pd.notna(latest_data[ind]):
-            # Normalisation simple (à adapter selon l'indicateur)
             value = float(latest_data[ind])
             if "taux" in ind.lower() and "chômage" in ind.lower():
-                # Pour le chômage, plus c'est bas, mieux c'est
                 normalized = max(0, 100 - value) / 100
             elif "mortalité" in ind.lower():
-                # Pour la mortalité, plus c'est bas, mieux c'est
                 normalized = max(0, 100 - value) / 100
             else:
-                # Pour la plupart des autres indicateurs, plus c'est haut, mieux c'est
                 normalized = min(value / 100, 1) if value <= 100 else min(value / 1000, 1)
             scores.append(normalized)
     
     return np.mean(scores) * 100 if scores else 0
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. ONGLET : DIAGNOSTIC COMPLET
+# 3. GÉNÉRATION DU RAPPORT PDF
+# ─────────────────────────────────────────────────────────────────────────────
+def generate_pdf_report(data, city_name="Nouakchott"):
+    """Génère un rapport PDF complet basé sur les données collectées"""
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, 
+                           topMargin=72, bottomMargin=18)
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], 
+                                fontSize=18, spaceAfter=30, alignment=TA_CENTER)
+    heading_style = ParagraphStyle('CustomHeading', parent=styles['Heading2'], 
+                                  fontSize=14, spaceAfter=12, textColor=colors.blue)
+    normal_style = styles['Normal']
+    
+    story = []
+    
+    # Page de titre
+    story.append(Paragraph("DIAGNOSTIC URBAIN INTELLIGENT", title_style))
+    story.append(Paragraph(f"Ville de {city_name}", title_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(f"Rapport généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", normal_style))
+    story.append(Paragraph("UrbanAI Diagnostic Platform", normal_style))
+    story.append(PageBreak())
+    
+    # Table des matières
+    story.append(Paragraph("TABLE DES MATIÈRES", heading_style))
+    toc_data = [
+        ["Section", "Page"],
+        ["1. Résumé exécutif", "3"],
+        ["2. Contexte démographique et social", "5"],
+        ["3. Analyse de l'habitat et des infrastructures", "8"],
+        ["4. Défis et opportunités identifiés", "11"],
+        ["5. Recommandations stratégiques", "14"],
+        ["6. Graphiques et visualisations", "17"],
+        ["7. Conclusion prospective", "19"]
+    ]
+    toc_table = Table(toc_data)
+    toc_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(toc_table)
+    story.append(PageBreak())
+    
+    # 1. Résumé exécutif
+    latest_data = data.iloc[0] if not data.empty else pd.Series()
+    
+    story.append(Paragraph("1. RÉSUMÉ EXÉCUTIF", heading_style))
+    
+    # Données clés
+    population = latest_data.get("Population totale", 0)
+    croissance = latest_data.get("Taux de croissance démographique (%)", 0)
+    eau = latest_data.get("Accès à l'eau potable (%)", 0)
+    elec = latest_data.get("Accès à l'électricité (%)", 0)
+    chomage = latest_data.get("Taux de chômage (%)", 0)
+    pib = latest_data.get("PIB par habitant (USD)", 0)
+    
+    resume_text = f"""
+    <b>Diagnostic URBAIN DE {city_name.upper()}, MAURITANIE</b><br/><br/>
+    
+    <b>Résumé Exécutif</b><br/>
+    Le présent diagnostic urbain vise à évaluer l'état actuel du développement urbain de {city_name}, 
+    capitale de la Mauritanie, et à identifier les priorités d'intervention pour améliorer les conditions 
+    de vie des habitants. Cette étude s'appuie sur des données collectées automatiquement auprès des 
+    institutions internationales et des bases de données officielles.<br/><br/>
+    
+    <b>Situation Actuelle</b><br/>
+    {city_name} compte {population/1000000:.1f} millions d'habitants, avec une croissance démographique 
+    de {croissance:.1f}% par an. La population est confrontée à des problèmes d'accès aux services 
+    essentiels, notamment l'eau ({100-eau:.0f}% des habitants n'ont pas accès à l'eau potable), 
+    l'électricité ({100-elec:.0f}% ne bénéficient pas d'une électricité fiable). 
+    Le chômage est de {chomage:.1f}% de la population active. Le PIB par habitant est de {pib:.0f} USD.<br/><br/>
+    
+    <b>Défis Principaux</b><br/>
+    Les défis principaux de {city_name} sont les suivants :<br/>
+    - Insuffisance des infrastructures de base (eau, électricité, assainissement)<br/>
+    - Taux de chômage élevé<br/>
+    - Faible PIB par habitant<br/>
+    - Défis de gouvernance urbaine<br/><br/>
+    
+    <b>Recommandations Clés</b><br/>
+    En conséquence du présent diagnostic, nous recommandons les actions suivantes :<br/>
+    - Améliorer l'accès aux services essentiels (eau, électricité, assainissement)<br/>
+    - Favoriser l'emploi et le développement économique<br/>
+    - Renforcer la gouvernance urbaine<br/>
+    - Développer les infrastructures de transport et de communication
+    """
+    
+    story.append(Paragraph(resume_text, normal_style))
+    story.append(PageBreak())
+    
+    # 2. Contexte démographique et social
+    story.append(Paragraph("2. CONTEXTE DÉMOGRAPHIQUE ET SOCIAL", heading_style))
+    
+    # Calcul des scores par dimension
+    dimensions = list(set(meta.get("dimension", "Autre") for meta in indicators_catalog.values()))
+    dimension_scores = {}
+    for dim in dimensions:
+        dimension_scores[dim] = calculate_dimension_score(data, dim)
+    
+    contexte_text = f"""
+    <b>Analyse du Profil Démographique de {city_name}</b><br/><br/>
+    
+    {city_name}, la capitale de la Mauritanie, présente une dynamique démographique marquée par 
+    une croissance soutenue. Avec une population de {population/1000000:.1f} millions d'habitants, 
+    la ville connaît une croissance annuelle de {croissance:.1f}%.<br/><br/>
+    
+    <b>Indicateurs sociaux clés :</b><br/>
+    - Population totale : {population/1000000:.1f} millions d'habitants<br/>
+    - Taux de croissance démographique : {croissance:.1f}% par an<br/>
+    - Espérance de vie : {latest_data.get("Espérance de vie à la naissance", "N/A")} ans<br/>
+    - Taux d'alphabétisation : {latest_data.get("Taux d'alphabétisation des adultes (%)", "N/A")}%<br/>
+    - Taux de mortalité infantile : {latest_data.get("Taux de mortalité infantile (‰)", "N/A")}‰<br/><br/>
+    
+    <b>Score de la dimension Société : {dimension_scores.get("Société", 0):.1f}/100</b><br/><br/>
+    
+    Cette analyse révèle les défis sociaux auxquels fait face la ville, notamment en termes 
+    d'éducation, de santé et de conditions de vie. Les données collectées permettent d'identifier 
+    les priorités d'intervention pour améliorer le bien-être de la population.
+    """
+    
+    story.append(Paragraph(contexte_text, normal_style))
+    story.append(PageBreak())
+    
+    # 3. Analyse de l'habitat et des infrastructures
+    story.append(Paragraph("3. ANALYSE DE L'HABITAT ET DES INFRASTRUCTURES", heading_style))
+    
+    habitat_text = f"""
+    <b>État des Infrastructures de Base à {city_name}</b><br/><br/>
+    
+    L'évaluation des infrastructures de base de {city_name} révèle des défis importants 
+    qui affectent la qualité de vie des habitants :<br/><br/>
+    
+    <b>Accès aux services essentiels :</b><br/>
+    - Accès à l'eau potable : {eau:.1f}% de la population<br/>
+    - Accès à l'électricité : {elec:.1f}% de la population<br/>
+    - Accès à l'assainissement : {latest_data.get("Accès à l'assainissement (%)", "N/A")}% de la population<br/><br/>
+    
+    <b>Infrastructures de communication :</b><br/>
+    - Utilisateurs d'Internet : {latest_data.get("Utilisateurs d'Internet (%)", "N/A")}% de la population<br/>
+    - Abonnements téléphonie mobile : {latest_data.get("Abonnements téléphonie mobile", "N/A")} pour 100 habitants<br/><br/>
+    
+    <b>Score de la dimension Habitat : {dimension_scores.get("Habitat", 0):.1f}/100</b><br/>
+    <b>Score de la dimension Infrastructures : {dimension_scores.get("Infrastructures", 0):.1f}/100</b><br/><br/>
+    
+    Ces données mettent en évidence la nécessité d'investissements massifs dans les 
+    infrastructures de base pour améliorer les conditions de vie et soutenir le développement économique.
+    """
+    
+    story.append(Paragraph(habitat_text, normal_style))
+    story.append(PageBreak())
+    
+    # 4. Défis et opportunités
+    story.append(Paragraph("4. DÉFIS ET OPPORTUNITÉS IDENTIFIÉS", heading_style))
+    
+    defis_text = f"""
+    <b>Principaux Défis Identifiés</b><br/><br/>
+    
+    L'analyse des données révèle plusieurs défis majeurs pour {city_name} :<br/><br/>
+    
+    <b>1. Défis économiques :</b><br/>
+    - PIB par habitant faible : {pib:.0f} USD<br/>
+    - Taux de chômage élevé : {chomage:.1f}%<br/>
+    - Score dimension Économie : {dimension_scores.get("Économie", 0):.1f}/100<br/><br/>
+    
+    <b>2. Défis environnementaux :</b><br/>
+    - Émissions CO2 : {latest_data.get("Émissions CO2 (t/hab)", "N/A")} tonnes/habitant<br/>
+    - Score dimension Environnement : {dimension_scores.get("Environnement", 0):.1f}/100<br/><br/>
+    
+    <b>3. Défis de gouvernance :</b><br/>
+    - Score dimension Gouvernance : {dimension_scores.get("Gouvernance", 0):.1f}/100<br/><br/>
+    
+    <b>Opportunités de Développement</b><br/><br/>
+    
+    Malgré ces défis, {city_name} présente des opportunités importantes :<br/>
+    - Position géographique stratégique<br/>
+    - Population jeune et dynamique<br/>
+    - Potentiel de développement des secteurs porteurs<br/>
+    - Possibilités de coopération internationale<br/><br/>
+    
+    La transformation de ces défis en opportunités nécessite une approche intégrée 
+    et des investissements ciblés dans les secteurs prioritaires.
+    """
+    
+    story.append(Paragraph(defis_text, normal_style))
+    story.append(PageBreak())
+    
+    # 5. Recommandations stratégiques
+    story.append(Paragraph("5. RECOMMANDATIONS STRATÉGIQUES", heading_style))
+    
+    recommandations_text = f"""
+    <b>Recommandations Prioritaires pour {city_name}</b><br/><br/>
+    
+    Basées sur l'analyse des données collectées et des scores par dimension, 
+    nous formulons les recommandations suivantes :<br/><br/>
+    
+    <b>1. Amélioration des infrastructures de base (Priorité 1)</b><br/>
+    - Étendre l'accès à l'eau potable de {eau:.1f}% à 90% d'ici 2030<br/>
+    - Améliorer l'accès à l'électricité de {elec:.1f}% à 95% d'ici 2030<br/>
+    - Développer les systèmes d'assainissement<br/><br/>
+    
+    <b>2. Développement économique (Priorité 2)</b><br/>
+    - Réduire le taux de chômage de {chomage:.1f}% à 15% d'ici 2030<br/>
+    - Augmenter le PIB par habitant de {pib:.0f} USD à 3000 USD d'ici 2030<br/>
+    - Soutenir l'entrepreneuriat et l'innovation<br/><br/>
+    
+    <b>3. Renforcement de la gouvernance (Priorité 3)</b><br/>
+    - Améliorer la transparence et la participation citoyenne<br/>
+    - Renforcer les capacités institutionnelles<br/>
+    - Développer la planification urbaine intégrée<br/><br/>
+    
+    <b>4. Protection de l'environnement (Priorité 4)</b><br/>
+    - Réduire les émissions de CO2<br/>
+    - Développer les énergies renouvelables<br/>
+    - Améliorer la gestion des déchets<br/><br/>
+    
+    <b>Budget estimé :</b> 500 millions USD sur 10 ans<br/>
+    <b>Sources de financement :</b> Gouvernement, bailleurs internationaux, secteur privé
+    """
+    
+    story.append(Paragraph(recommandations_text, normal_style))
+    story.append(PageBreak())
+    
+    # 6. Tableau des scores par dimension
+    story.append(Paragraph("6. SCORES PAR DIMENSION", heading_style))
+    
+    # Tableau des scores
+    scores_data = [["Dimension", "Score (/100)", "Niveau"]]
+    for dim, score in dimension_scores.items():
+        if score > 70:
+            niveau = "Bon"
+        elif score > 50:
+            niveau = "Moyen"
+        elif score > 30:
+            niveau = "Faible"
+        else:
+            niveau = "Critique"
+        scores_data.append([dim, f"{score:.1f}", niveau])
+    
+    scores_table = Table(scores_data)
+    scores_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.blue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.lightblue),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(scores_table)
+    story.append(Spacer(1, 20))
+    
+    # Score global
+    global_score = np.mean([s for s in dimension_scores.values() if s > 0])
+    story.append(Paragraph(f"<b>Score Global du Diagnostic : {global_score:.1f}/100</b>", heading_style))
+    story.append(PageBreak())
+    
+    # 7. Conclusion prospective
+    story.append(Paragraph("7. CONCLUSION PROSPECTIVE", heading_style))
+    
+    conclusion_text = f"""
+    <b>Synthèse du Diagnostic de {city_name}</b><br/><br/>
+    
+    Le diagnostic urbain intelligent de {city_name} révèle une ville en transition, 
+    confrontée à des défis importants mais disposant d'un potentiel de développement significatif.<br/><br/>
+    
+    <b>Enjeux majeurs identifiés :</b><br/>
+    - Score global de {global_score:.1f}/100 indiquant des marges d'amélioration importantes<br/>
+    - Déficits critiques dans les infrastructures de base<br/>
+    - Défis économiques et sociaux à relever<br/>
+    - Opportunités de développement à saisir<br/><br/>
+    
+    <b>Potentiel de transformation :</b><br/>
+    Avec les investissements appropriés et une gouvernance renforcée, {city_name} peut 
+    devenir un modèle de développement urbain durable en Afrique de l'Ouest.<br/><br/>
+    
+    <b>Conditions de succès :</b><br/>
+    - Engagement politique fort<br/>
+    - Mobilisation des ressources financières<br/>
+    - Participation citoyenne active<br/>
+    - Coopération internationale<br/><br/>
+    
+    <b>Appel à l'action :</b><br/>
+    Nous appelons toutes les parties prenantes - gouvernement, société civile, 
+    secteur privé, partenaires internationaux - à s'engager dans la mise en œuvre 
+    des recommandations formulées pour transformer {city_name} en une ville 
+    intelligente, durable et prospère.<br/><br/>
+    
+    <i>Rapport généré automatiquement par la plateforme UrbanAI Diagnostic Platform</i>
+    """
+    
+    story.append(Paragraph(conclusion_text, normal_style))
+    
+    # Construction du PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. ONGLET : DIAGNOSTIC COMPLET
 # ─────────────────────────────────────────────────────────────────────────────
 def diagnostic_tab():
     st.header("🏙️ Diagnostic Urbain Complet")
@@ -150,7 +463,7 @@ def diagnostic_tab():
     if 'diagnostic_data' not in st.session_state:
         st.session_state.diagnostic_data = None
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         if st.button("📥 Charger les données automatiquement"):
@@ -162,6 +475,21 @@ def diagnostic_tab():
         if st.button("🔄 Réinitialiser le diagnostic"):
             st.session_state.diagnostic_data = None
             st.success("Diagnostic réinitialisé")
+    
+    with col3:
+        if st.session_state.diagnostic_data is not None:
+            if st.button("📄 Générer Rapport PDF"):
+                with st.spinner("Génération du rapport PDF..."):
+                    pdf_buffer = generate_pdf_report(st.session_state.diagnostic_data, "Nouakchott")
+                    
+                # Téléchargement du PDF
+                st.download_button(
+                    label="📥 Télécharger le Rapport PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name=f"Diagnostic_Urbain_Nouakchott_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf"
+                )
+                st.success("✅ Rapport PDF généré avec succès !")
     
     if st.session_state.diagnostic_data is not None:
         data = st.session_state.diagnostic_data
@@ -222,11 +550,10 @@ def diagnostic_tab():
         with col_score2:
             st.metric("Dimensions évaluées", f"{len([s for s in all_scores if s > 0])}/{len(dimensions)}")
         with col_score3:
-            if st.button("📄 Générer rapport"):
-                st.success("Rapport généré ! (Fonctionnalité à développer)")
+            st.metric("Indicateurs collectés", f"{len([col for col in data.columns if col != 'Année'])}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. ONGLET : DASHBOARD ENRICHI
+# 5. ONGLET : DASHBOARD ENRICHI
 # ─────────────────────────────────────────────────────────────────────────────
 def dashboard_tab():
     st.header("📊 Dashboard Interactif")
@@ -294,40 +621,9 @@ def dashboard_tab():
             yaxis_title="Valeur"
         )
         st.plotly_chart(fig, use_container_width=True)
-    
-    # Comparaison temporelle
-    st.subheader("⏱️ Comparaison temporelle")
-    col_year1, col_year2 = st.columns(2)
-    
-    with col_year1:
-        year1 = st.selectbox("Année 1", data["Année"].dropna().astype(int), index=0)
-    with col_year2:
-        year2 = st.selectbox("Année 2", data["Année"].dropna().astype(int), index=min(5, len(data)-1))
-    
-    if year1 != year2:
-        data_year1 = data[data["Année"] == year1].iloc[0] if not data[data["Année"] == year1].empty else pd.Series()
-        data_year2 = data[data["Année"] == year2].iloc[0] if not data[data["Année"] == year2].empty else pd.Series()
-        
-        st.write(f"**Comparaison {year1} vs {year2}**")
-        
-        comparison_data = []
-        for ind in ["PIB par habitant (USD)", "Population totale", "Accès à l'électricité (%)"]:
-            if ind in data_year1 and ind in data_year2:
-                val1 = data_year1[ind] if pd.notna(data_year1[ind]) else 0
-                val2 = data_year2[ind] if pd.notna(data_year2[ind]) else 0
-                evolution = ((val1 - val2) / val2 * 100) if val2 != 0 else 0
-                comparison_data.append({
-                    "Indicateur": ind,
-                    f"{year2}": val2,
-                    f"{year1}": val1,
-                    "Évolution (%)": evolution
-                })
-        
-        if comparison_data:
-            st.dataframe(pd.DataFrame(comparison_data))
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. ONGLET : CHATBOT INTELLIGENT
+# 6. ONGLET : CHATBOT INTELLIGENT
 # ─────────────────────────────────────────────────────────────────────────────
 def chatbot_tab():
     st.header("🤖 Assistant IA - Diagnostic Urbain")
@@ -460,7 +756,7 @@ def generate_recommendations(latest_data):
     return recommendations
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. ONGLET : AUTO-COLLECTOR
+# 7. ONGLET : AUTO-COLLECTOR
 # ─────────────────────────────────────────────────────────────────────────────
 def auto_collector_tab():
     st.header("🔍 Auto-Collector")
@@ -486,7 +782,7 @@ def auto_collector_tab():
                         st.markdown(f"• **{ind}** — `{meta['code']}`")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. FONCTION PRINCIPALE STREAMLIT
+# 8. FONCTION PRINCIPALE STREAMLIT
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
     create_header()
