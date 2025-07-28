@@ -618,7 +618,7 @@ def diagnostic_tab():
         diagnostic_date = st.date_input("Date du diagnostic", value=datetime.now())
         
         # Option pour activer la recherche web
-        enable_Web Search = st.checkbox("🌐 Enrichir avec des données web", value=True, help="Collecte automatiquement des informations sur la ville depuis Wikipedia et autres sources")
+        enable_Web_Search = st.checkbox("🌐 Enrichir avec des données web", value=True, help="Collecte automatiquement des informations sur la ville depuis Wikipedia et autres sources")
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Données démographiques
@@ -781,7 +781,7 @@ def diagnostic_tab():
                         st.write("---")
             
             # Affichage des informations de configuration
-            web_status = "✅ Activée" if enable_Web Search else "❌ Désactivée"
+            web_status = "✅ Activée" if enable_Web_Search else "❌ Désactivée"
             st.info(f"""
             **Diagnostic configuré pour:** {city_name}, {country}  
             **Type:** {diagnostic_type}  
