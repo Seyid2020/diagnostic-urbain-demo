@@ -1202,7 +1202,7 @@ def dashboard_tab():
         # Graphique en secteurs pour les groupes d'âge
         age_data = {
             'Groupe d\'âge': ['0-14 ans', '15-64 ans', '65+ ans'],
-            'Population 'Population (%)': [42.5, 54.3, 3.2]
+            'Population (%)': [42.5, 54.3, 3.2]
         }
         
         fig_age = px.pie(
