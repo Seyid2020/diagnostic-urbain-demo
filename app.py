@@ -1155,6 +1155,7 @@ def dashboard_tab():
     
     st.plotly_chart(fig_comparison, use_container_width=True)
 
+
 def chatbot_tab():
     """Onglet Chatbot pour assistance IA"""
     st.markdown('<div class="main-header">🤖 ASSISTANT IA URBAIN</div>', unsafe_allow_html=True)
@@ -1217,7 +1218,8 @@ def chatbot_tab():
                 Répondez de manière professionnelle, avec des données concrètes quand possible, et proposez des solutions pratiques.
                 """
                 
-                full full_prompt = f"{system_prompt}\n\nQuestion de l'utilisateur: {prompt}"
+                # CORRECTION ICI - Suppression du "full" en double
+                full_prompt = f"{system_prompt}\n\nQuestion de l'utilisateur: {prompt}"
                 
                 response = generate_enhanced_content(full_prompt, clients, 600)
                 st.markdown(response)
@@ -1284,7 +1286,6 @@ def chatbot_tab():
             }
         ]
         st.rerun()
-
 def resources_tab():
     """Onglet Ressources et Documentation"""
     st.markdown('<div class="main-header">📚 RESSOURCES ET DOCUMENTATION</div>', unsafe_allow_html=True)
