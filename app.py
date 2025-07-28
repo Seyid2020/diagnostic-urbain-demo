@@ -22,7 +22,7 @@ import base64
 # Configuration de la page
 st.set_page_config(
     page_title="Smart City QuickScan",
-    page_icon="🏙️",
+    page_icon="��️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -143,10 +143,10 @@ def search_web_info(query, max_results=3):
     except Exception as e:
         return []
 
-def generate_enhanced_content(prompt, clients, max_tokens=500, include_Web Search=False):
+def generate_enhanced_content(prompt, clients, max_tokens=500, include_web_search=False):
     """Génère du contenu avec les clients IA disponibles"""
     
-    if include_Web Search:
+    if include_web_search:
         # Extraire les mots-clés pour la recherche web
         search_query = prompt.split(":")[-1].strip() if ":" in prompt else prompt
         web_results = search_web_info(search_query)
@@ -167,8 +167,8 @@ def generate_enhanced_content(prompt, clients, max_tokens=500, include_Web Searc
             content = response.choices[0].message.content
             
             # Ajouter la source si recherche web
-            if include_Web Search and web_results:
-                content += f"\n\n📍 *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
+            if include_web_search and web_results:
+                content += f"\n\n�� *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
             
             return content
         except Exception as e:
@@ -185,8 +185,8 @@ def generate_enhanced_content(prompt, clients, max_tokens=500, include_Web Searc
             )
             content = response.choices[0].message.content
             
-            if include_Web Search and web_results:
-                content += f"\n\n📍 *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
+            if include_web_search and web_results:
+                content += f"\n\n�� *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
             
             return content
         except Exception as e:
@@ -403,10 +403,10 @@ def create_pdf_report(city_name, total_score, scores, recommendations, charts_da
 
 def data_input_tab():
     """Onglet de saisie des données"""
-    st.markdown('<div class="main-header">📊 SAISIE DES DONNÉES</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">�� SAISIE DES DONNÉES</div>', unsafe_allow_html=True)
     
     # Informations générales
-    st.subheader("🏙️ Informations Générales")
+    st.subheader("��️ Informations Générales")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -422,7 +422,7 @@ def data_input_tab():
     st.markdown("---")
     
     # Infrastructure
-    st.subheader("🏗️ Infrastructure")
+    st.subheader("��️ Infrastructure")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -438,7 +438,7 @@ def data_input_tab():
     st.markdown("---")
     
     # Gouvernance
-    st.subheader("🏛️ Gouvernance")
+    st.subheader("��️ Gouvernance")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -452,7 +452,7 @@ def data_input_tab():
     st.markdown("---")
     
     # Environnement
-    st.subheader("🌱 Environnement")
+    st.subheader("�� Environnement")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -466,7 +466,7 @@ def data_input_tab():
     st.markdown("---")
     
     # Social
-    st.subheader("👥 Indicateurs Sociaux")
+    st.subheader("�� Indicateurs Sociaux")
     col1, col2 = st.columns(2)
     
     with col1:
@@ -507,12 +507,12 @@ def data_input_tab():
     
     st.session_state.city_data = city_data
     
-    if st.button("🚀 Lancer l'Analyse", type="primary", use_container_width=True):
+    if st.button("�� Lancer l'Analyse", type="primary", use_container_width=True):
         st.success("✅ Données enregistrées ! Consultez l'onglet 'Analyse' pour voir les résultats.")
 
 def analysis_tab():
     """Onglet d'analyse et résultats"""
-    st.markdown('<div class="main-header">📈 ANALYSE SMART CITY</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">�� ANALYSE SMART CITY</div>', unsafe_allow_html=True)
     
     if 'city_data' not in st.session_state:
         st.warning("⚠️ Veuillez d'abord saisir les données dans l'onglet 'Données'")
@@ -536,16 +536,16 @@ def analysis_tab():
         """, unsafe_allow_html=True)
     
     # Métriques détaillées
-    st.subheader("📊 Scores par Domaine")
+    st.subheader("�� Scores par Domaine")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
     metrics = [
-        ("Infrastructure", scores['infrastructure'], "🏗️"),
-        ("Gouvernance", scores['governance'], "🏛️"),
-        ("Environnement", scores['environment'], "🌱"),
-        ("Économie", scores['economy'], "💼"),
-        ("Social", scores['social'], "👥")
+        ("Infrastructure", scores['infrastructure'], "��️"),
+        ("Gouvernance", scores['governance'], "��️"),
+        ("Environnement", scores['environment'], "��"),
+        ("Économie", scores['economy'], "��"),
+        ("Social", scores['social'], "��")
     ]
     
     for i, (col, (name, score, icon)) in enumerate(zip([col1, col2, col3, col4, col5], metrics)):
@@ -565,12 +565,12 @@ def analysis_tab():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("🎯 Profil Smart City")
+        st.subheader("�� Profil Smart City")
         radar_chart = create_radar_chart(scores)
         st.plotly_chart(radar_chart, use_container_width=True)
     
     with col2:
-        st.subheader("🌍 Comparaison Internationale")
+        st.subheader("�� Comparaison Internationale")
         benchmarks = {
             'Singapour': 87.2,
             'Barcelone': 82.5,
@@ -584,9 +584,9 @@ def analysis_tab():
     
     # Analyse détaillée avec IA
     st.markdown("---")
-    st.subheader("🤖 Analyse IA Approfondie")
+    st.subheader("�� Analyse IA Approfondie")
     
-    if st.button("🚀 Générer l'Analyse IA", type="primary"):
+    if st.button("�� Générer l'Analyse IA", type="primary"):
         with st.spinner("Analyse en cours..."):
             clients = initialize_ai_clients()
             
@@ -613,13 +613,13 @@ def analysis_tab():
             analysis = generate_enhanced_content(analysis_prompt, clients, 400)
             
             st.markdown('<div class="info-box">', unsafe_allow_html=True)
-            st.markdown("### 🎯 Analyse Experte")
+            st.markdown("### �� Analyse Experte")
             st.markdown(analysis)
             st.markdown('</div>', unsafe_allow_html=True)
 
 def recommendations_tab():
     """Onglet des recommandations"""
-    st.markdown('<div class="main-header">💡 RECOMMANDATIONS</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">�� RECOMMANDATIONS</div>', unsafe_allow_html=True)
     
     if 'city_data' not in st.session_state:
         st.warning("⚠️ Veuillez d'abord effectuer l'analyse dans les onglets précédents")
@@ -630,14 +630,14 @@ def recommendations_tab():
     recommendations = generate_recommendations(scores, city_data)
     
     # Plan d'action stratégique
-    st.subheader("🎯 Plan d'Action Stratégique")
+    st.subheader("�� Plan d'Action Stratégique")
     
     # Recommandations par priorité
     high_priority = [r for r in recommendations if r['priority'] == 'Haute']
     medium_priority = [r for r in recommendations if r['priority'] == 'Moyenne']
     
     if high_priority:
-        st.markdown("### 🔴 Priorité Haute")
+        st.markdown("### �� Priorité Haute")
         for i, rec in enumerate(high_priority, 1):
             st.markdown(f"""
             <div class="warning-box">
@@ -648,7 +648,7 @@ def recommendations_tab():
             """, unsafe_allow_html=True)
     
     if medium_priority:
-        st.markdown("### 🟡 Priorité Moyenne")
+        st.markdown("### �� Priorité Moyenne")
         for i, rec in enumerate(medium_priority, 1):
             st.markdown(f"""
             <div class="recommendation-box">
@@ -660,9 +660,9 @@ def recommendations_tab():
     
     # Recommandations IA personnalisées
     st.markdown("---")
-    st.subheader("🤖 Recommandations IA Personnalisées")
+    st.subheader("�� Recommandations IA Personnalisées")
     
-    if st.button("🚀 Générer Recommandations Détaillées", type="primary"):
+    if st.button("�� Générer Recommandations Détaillées", type="primary"):
         with st.spinner("Génération des recommandations..."):
             clients = initialize_ai_clients()
             
@@ -688,13 +688,13 @@ def recommendations_tab():
             detailed_recs = generate_enhanced_content(rec_prompt, clients, 600)
             
             st.markdown('<div class="info-box">', unsafe_allow_html=True)
-            st.markdown("### 📋 Plan d'Action Détaillé")
+            st.markdown("### �� Plan d'Action Détaillé")
             st.markdown(detailed_recs)
             st.markdown('</div>', unsafe_allow_html=True)
     
     # Simulation d'impact
     st.markdown("---")
-    st.subheader("📊 Simulation d'Impact")
+    st.subheader("�� Simulation d'Impact")
     
     st.markdown("Estimez l'impact potentiel des améliorations:")
     
@@ -737,7 +737,7 @@ def recommendations_tab():
 
 def report_tab():
     """Onglet de génération de rapport"""
-    st.markdown('<div class="main-header">📄 RAPPORT FINAL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">�� RAPPORT FINAL</div>', unsafe_allow_html=True)
     
     if 'city_data' not in st.session_state:
         st.warning("⚠️ Veuillez d'abord effectuer l'analyse complète")
@@ -748,7 +748,7 @@ def report_tab():
     recommendations = generate_recommendations(scores, city_data)
     
     # Aperçu du rapport
-    st.subheader("📋 Aperçu du Rapport")
+    st.subheader("�� Aperçu du Rapport")
     
     col1, col2 = st.columns([2, 1])
     
@@ -770,7 +770,7 @@ def report_tab():
     
     with col2:
         # Génération du PDF
-        if st.button("📥 Télécharger PDF", type="primary", use_container_width=True):
+        if st.button("�� Télécharger PDF", type="primary", use_container_width=True):
             with st.spinner("Génération du rapport PDF..."):
                 pdf_buffer = create_pdf_report(
                     city_data['city_name'], 
@@ -781,7 +781,7 @@ def report_tab():
                 )
                 
                 st.download_button(
-                    label="💾 Télécharger le Rapport PDF",
+                    label="�� Télécharger le Rapport PDF",
                     data=pdf_buffer.getvalue(),
                     file_name=f"Smart_City_Report_{city_data['city_name']}_{datetime.now().strftime('%Y%m%d')}.pdf",
                     mime="application/pdf",
@@ -789,7 +789,7 @@ def report_tab():
                 )
         
         # Export des données
-        if st.button("📊 Exporter Données", use_container_width=True):
+        if st.button("�� Exporter Données", use_container_width=True):
             export_data = {
                 'ville': city_data['city_name'],
                 'pays': city_data['country'],
@@ -802,7 +802,7 @@ def report_tab():
             csv = df.to_csv(index=False)
             
             st.download_button(
-                label="💾 Télécharger CSV",
+                label="�� Télécharger CSV",
                 data=csv,
                 file_name=f"smart_city_data_{city_data['city_name']}.csv",
                 mime="text/csv",
@@ -811,9 +811,9 @@ def report_tab():
     
     # Rapport détaillé avec IA
     st.markdown("---")
-    st.subheader("🤖 Rapport Exécutif IA")
+    st.subheader("�� Rapport Exécutif IA")
     
-    if st.button("📝 Générer Rapport Exécutif", type="primary"):
+    if st.button("�� Générer Rapport Exécutif", type="primary"):
         with st.spinner("Rédaction du rapport exécutif..."):
             clients = initialize_ai_clients()
             
@@ -842,7 +842,7 @@ def report_tab():
             executive_report = generate_enhanced_content(executive_prompt, clients, 500)
             
             st.markdown('<div class="info-box">', unsafe_allow_html=True)
-            st.markdown("### 📊 Rapport Exécutif")
+            st.markdown("### �� Rapport Exécutif")
             st.markdown(executive_report)
             st.markdown('</div>', unsafe_allow_html=True)
             
@@ -851,21 +851,21 @@ def report_tab():
 
 def chatbot_tab():
     """Onglet Chatbot pour assistance IA"""
-    st.markdown('<div class="main-header">🤖 ASSISTANT IA URBAIN</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">�� ASSISTANT IA URBAIN</div>', unsafe_allow_html=True)
     
     # Initialisation des clients IA
     clients = initialize_ai_clients()
     
     # Interface du chatbot
     st.markdown("""
-    ### 💬 Posez vos questions sur le développement urbain
+    ### �� Posez vos questions sur le développement urbain
     
     Cet assistant IA peut vous aider avec :
-    - **Analyse de données urbaines** 📊
-    - **Recommandations de politiques** 🏛️
-    - **Comparaisons entre villes** 🌍
-    - **Interprétation d'indicateurs** 📈
-    - **Stratégies de développement** 🚀
+    - **Analyse de données urbaines** ��
+    - **Recommandations de politiques** ��️
+    - **Comparaisons entre villes** ��
+    - **Interprétation d'indicateurs** ��
+    - **Stratégies de développement** ��
     """)
     
     # Historique des conversations
@@ -939,7 +939,7 @@ def chatbot_tab():
                     Répondez de manière concise et pratique. Si vous ne connaissez pas une information précise, dites-le clairement.
                     """
                     
-                    response = generate_enhanced_content(full_prompt, clients, 200, include_Web Search=needs_Web Search)
+                    response = generate_enhanced_content(full_prompt, clients, 200, include_web_search=needs_Web Search)
                 
                 st.markdown(response)
                 
@@ -948,26 +948,26 @@ def chatbot_tab():
     
     # Suggestions de questions
     st.markdown("---")
-    st.markdown("### 💡 Questions suggérées")
+    st.markdown("### �� Questions suggérées")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("🏠 Comment améliorer l'accès au logement décent ?"):
+        if st.button("�� Comment améliorer l'accès au logement décent ?"):
             st.session_state.messages.append({
                 "role": "user", 
                 "content": "Comment améliorer l'accès au logement décent ?"
             })
             st.rerun()
         
-        if st.button("💧 Stratégies pour l'accès à l'eau potable"):
+        if st.button("�� Stratégies pour l'accès à l'eau potable"):
             st.session_state.messages.append({
                 "role": "user", 
                 "content": "Quelles sont les meilleures stratégies pour améliorer l'accès à l'eau potable en milieu urbain africain ?"
             })
             st.rerun()
         
-        if st.button("🚌 Développer le transport public"):
+        if st.button("�� Développer le transport public"):
             st.session_state.messages.append({
                 "role": "user", 
                 "content": "Comment développer un système de transport public efficace dans une ville en croissance rapide ?"
@@ -975,21 +975,21 @@ def chatbot_tab():
             st.rerun()
     
     with col2:
-        if st.button("📊 Interpréter les indicateurs urbains"):
+        if st.button("�� Interpréter les indicateurs urbains"):
             st.session_state.messages.append({
                 "role": "user", 
                 "content": "Comment interpréter et utiliser les indicateurs urbains pour la prise de décision ?"
             })
             st.rerun()
         
-        if st.button("🌱 Résilience climatique urbaine"):
+        if st.button("�� Résilience climatique urbaine"):
             st.session_state.messages.append({
                 "role": "user", 
                 "content": "Quelles mesures prendre pour renforcer la résilience climatique d'une ville sahélienne ?"
             })
             st.rerun()
         
-        if st.button("💼 Créer des emplois urbains"):
+        if st.button("�� Créer des emplois urbains"):
             st.session_state.messages.append({
                 "role": "user", 
                 "content": "Quelles stratégies pour créer des emplois durables en milieu urbain africain ?"
@@ -997,7 +997,7 @@ def chatbot_tab():
             st.rerun()
     
     # Bouton pour effacer l'historique
-    if st.button("🗑️ Effacer la conversation", type="secondary"):
+    if st.button("��️ Effacer la conversation", type="secondary"):
         st.session_state.messages = [
             {
                 "role": "assistant", 
@@ -1011,19 +1011,19 @@ def main():
     
     # Sidebar avec informations
     with st.sidebar:
-        st.markdown("### 🏙️ Smart City QuickScan")
+        st.markdown("### ��️ Smart City QuickScan")
         st.markdown("---")
         st.markdown("""
         **Outil de diagnostic urbain intelligent**
         
-        📊 **Fonctionnalités:**
+        �� **Fonctionnalités:**
         - Évaluation multi-critères
         - Benchmarking international  
         - Recommandations IA
         - Rapports personnalisés
         - Assistant IA urbain
         
-        🎯 **Objectif:**
+        �� **Objectif:**
         Évaluer le potentiel Smart City des villes africaines en 5 minutes
         """)
         
@@ -1033,11 +1033,11 @@ def main():
     
     # Navigation par onglets
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Données", 
-        "📈 Analyse", 
-        "💡 Recommandations", 
-        "📄 Rapport",
-        "🤖 Chatbot"
+        "�� Données", 
+        "�� Analyse", 
+        "�� Recommandations", 
+        "�� Rapport",
+        "�� Chatbot"
     ])
     
     with tab1:
