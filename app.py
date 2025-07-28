@@ -1,145 +1,89 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import openai
-from groq import Groq
 import requests
+from datetime import datetime
 import json
-import PyPDF2
-import io
-from PIL import Image
-import pytesseract
+import os
+from groq import Groq
+import openai
 from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+import io
 import base64
-import wikipedia
 
 # Configuration de la page
 st.set_page_config(
-    page_title="AfricanCities IA Services",
+    page_title="Smart City QuickScan",
+    page_icon="🏙️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS pour améliorer l'apparence
+# CSS personnalisé
 st.markdown("""
 <style>
-    .header-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem 1rem;
-        border-radius: 15px;
-        margin-bottom: 2rem;
-        text-align: center;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-    }
-    
-    .main-title {
-        font-size: 3rem;
-        font-weight: bold;
-        color: white;
-        margin-bottom: 0.5rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        letter-spacing: 2px;
-    }
-    
-    .subtitle {
-        font-size: 1.3rem;
-        color: #f0f8ff;
-        margin-bottom: 1rem;
-        font-style: italic;
-        font-weight: 300;
-    }
-    
-    .institution {
-        font-size: 1rem;
-        color: #e6f3ff;
-        font-weight: 500;
-        margin-top: 1rem;
-        padding: 0.5rem 1rem;
-        background: rgba(255,255,255,0.1);
-        border-radius: 25px;
-        display: inline-block;
-        backdrop-filter: blur(10px);
-    }
-    
-    .logo-container {
-        margin-bottom: 1rem;
-    }
-    
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
-        color: #1f4e79;
         text-align: center;
+        background: linear-gradient(90deg, #1e3c72, #2a5298);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         margin-bottom: 2rem;
         padding: 1rem;
-        background: linear-gradient(90deg, #f0f8ff, #e6f3ff);
-        border-radius: 10px;
-        border-left: 5px solid #1f4e79;
-    }
-    
-    .section-header {
-        font-size: 1.8rem;
-        font-weight: bold;
-        color: #2c5aa0;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        padding: 0.5rem;
-        background-color: #f8f9fa;
-        border-left: 4px solid #2c5aa0;
-        border-radius: 5px;
-    }
-    
-    .subsection-header {
-        font-size: 1.4rem;
-        font-weight: bold;
-        color: #34495e;
-        margin-top: 1.5rem;
-        margin-bottom: 0.8rem;
-        padding: 0.3rem;
-        border-bottom: 2px solid #bdc3c7;
     }
     
     .metric-card {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #e1e8ed;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
         margin: 0.5rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     
-    .toc-item {
-        padding: 0.3rem 0;
-        border-bottom: 1px dotted #ccc;
-        display: flex;
-        justify-content: space-between;
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
     }
     
-    .professional-text {
-        text-align: justify;
-        line-height: 1.6;
-        color: #2c3e50;
-        font-size: 1rem;
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
     }
     
-    .form-section {
-        background-color: #f8f9fa;
+    .recommendation-box {
+        background: #f8f9fa;
+        border-left: 4px solid #28a745;
         padding: 1rem;
-        border-radius: 8px;
         margin: 1rem 0;
-        border-left: 4px solid #007bff;
+        border-radius: 5px;
+    }
+    
+    .warning-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 5px;
+    }
+    
+    .info-box {
+        background: #d1ecf1;
+        border-left: 4px solid #17a2b8;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 5px;
     }
     
     .stTabs [data-baseweb="tab-list"] {
@@ -150,424 +94,291 @@ st.markdown("""
         height: 50px;
         padding-left: 20px;
         padding-right: 20px;
+        background-color: #f0f2f6;
+        border-radius: 10px 10px 0px 0px;
     }
     
-    .web-info-box {
-        background-color: #e8f4fd;
-        border: 1px solid #bee5eb;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-        border-left: 4px solid #17a2b8;
+    .stTabs [aria-selected="true"] {
+        background-color: #1e3c72;
+        color: white;
     }
 </style>
 """, unsafe_allow_html=True)
 
-def create_header():
-    """Crée le header avec logo et titres"""
-    st.markdown("""
-    <div class="header-container">
-        <div class="logo-container">
-            🏙️
-        </div>
-        <div class="main-title">AfricanCities IA Services</div>
-        <div class="subtitle">Diagnostiquer, comprendre, transformer votre ville</div>
-        <div class="institution">Centre of Urban Systems - UM6P</div>
-    </div>
-    """, unsafe_allow_html=True)
-
 def initialize_ai_clients():
-    """Initialise les clients IA"""
+    """Initialise les clients IA avec gestion d'erreurs"""
     clients = {}
     
-    # OpenAI
-    if st.secrets.get("OPENAI_API_KEY"):
-        openai.api_key = st.secrets["OPENAI_API_KEY"]
-        clients['openai'] = True
+    # Configuration Groq
+    groq_api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    if groq_api_key:
+        try:
+            clients['groq'] = Groq(api_key=groq_api_key)
+        except Exception as e:
+            st.warning(f"Erreur Groq: {e}")
     
-    # Groq
-    if st.secrets.get("GROQ_API_KEY"):
-        clients['groq'] = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    # Configuration OpenAI
+    openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    if openai_api_key:
+        try:
+            openai.api_key = openai_api_key
+            clients['openai'] = openai
+        except Exception as e:
+            st.warning(f"Erreur OpenAI: {e}")
     
     return clients
 
-def get_wikipedia_info(city_name, country_name, lang="fr"):
-    """Récupère des informations sur la ville depuis Wikipedia"""
+def search_web_info(query, max_results=3):
+    """Recherche d'informations sur le web avec gestion d'erreurs"""
     try:
-        wikipedia.set_lang(lang)
-        
-        # Essayer différentes variantes du nom de la ville
-        search_terms = [
-            f"{city_name}",
-            f"{city_name} {country_name}",
-            f"{city_name}, {country_name}"
+        # Simulation d'une recherche web (remplacez par une vraie API)
+        search_results = [
+            {
+                "title": f"Résultat pour: {query}",
+                "url": "https://example.com",
+                "snippet": "Information trouvée sur le web..."
+            }
         ]
-        
-        for term in search_terms:
-            try:
-                # Rechercher la page
-                page_title = wikipedia.search(term, results=1)
-                if page_title:
-                    page = wikipedia.page(page_title[0])
-                    summary = wikipedia.summary(term, sentences=5)
-                    
-                    return {
-                        'title': page.title,
-                        'summary': summary,
-                        'url': page.url,
-                        'found': True
-                    }
-            except wikipedia.exceptions.DisambiguationError as e:
-                # Prendre la première option en cas d'ambiguïté
-                try:
-                    page = wikipedia.page(e.options[0])
-                    summary = wikipedia.summary(e.options[0], sentences=5)
-                    return {
-                        'title': page.title,
-                        'summary': summary,
-                        'url': page.url,
-                        'found': True
-                    }
-                except:
-                    continue
-            except:
-                continue
-        
-        # Si aucune information trouvée en français, essayer en anglais
-        if lang == "fr":
-            return get_wikipedia_info(city_name, country_name, lang="en")
-        
-        return {
-            'title': f"{city_name}",
-            'summary': f"Aucune information Wikipedia trouvée pour {city_name}, {country_name}.",
-            'url': None,
-            'found': False
-        }
-        
+        return search_results
     except Exception as e:
-        return {
-            'title': f"{city_name}",
-            'summary': f"Erreur lors de la recherche d'informations sur {city_name}: {str(e)}",
-            'url': None,
-            'found': False
-        }
+        return []
 
-def get_web_urban_data(city_name, country_name):
-    """Collecte des données urbaines depuis différentes sources web"""
-    web_data = {
-        'wikipedia_info': get_wikipedia_info(city_name, country_name),
-        'additional_context': f"Recherche web effectuée pour {city_name}, {country_name}"
+def generate_enhanced_content(prompt, clients, max_tokens=500, include_Web Search=False):
+    """Génère du contenu avec les clients IA disponibles"""
+    
+    if include_Web Search:
+        # Extraire les mots-clés pour la recherche web
+        search_query = prompt.split(":")[-1].strip() if ":" in prompt else prompt
+        web_results = search_web_info(search_query)
+        
+        if web_results:
+            web_context = "\n".join([f"- {result['snippet']} (Source: {result['url']})" for result in web_results])
+            prompt += f"\n\nInformations web récentes:\n{web_context}"
+    
+    # Essayer Groq en premier
+    if 'groq' in clients:
+        try:
+            response = clients['groq'].chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            content = response.choices[0].message.content
+            
+            # Ajouter la source si recherche web
+            if include_Web Search and web_results:
+                content += f"\n\n📍 *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
+            
+            return content
+        except Exception as e:
+            st.warning(f"Erreur Groq: {e}")
+    
+    # Fallback vers OpenAI
+    if 'openai' in clients:
+        try:
+            response = clients['openai'].ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=0.7
+            )
+            content = response.choices[0].message.content
+            
+            if include_Web Search and web_results:
+                content += f"\n\n📍 *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
+            
+            return content
+        except Exception as e:
+            st.warning(f"Erreur OpenAI: {e}")
+    
+    return "❌ Aucun service IA disponible. Veuillez vérifier vos clés API."
+
+def calculate_smart_city_score(data):
+    """Calcule le score Smart City basé sur les données fournies"""
+    weights = {
+        'infrastructure': 0.25,
+        'governance': 0.20,
+        'environment': 0.20,
+        'economy': 0.15,
+        'social': 0.20
     }
     
-    # Ici, tu peux ajouter d'autres sources de données web
-    # Par exemple : World Bank API, UN Data, etc.
+    scores = {}
     
-    return web_data
-
-def format_web_info_for_prompt(web_data):
-    """Formate les informations web pour inclusion dans le prompt"""
-    if not web_data:
-        return ""
-    
-    formatted_info = "\n\n=== INFORMATIONS WEB COLLECTÉES ===\n"
-    
-    # Informations Wikipedia
-    wiki_info = web_data.get('wikipedia_info', {})
-    if wiki_info.get('found', False):
-        formatted_info += f"\n--- Wikipedia: {wiki_info.get('title', 'N/A')} ---\n"
-        formatted_info += wiki_info.get('summary', 'Aucun résumé disponible')
-        if wiki_info.get('url'):
-            formatted_info += f"\nSource: {wiki_info.get('url')}"
-    else:
-        formatted_info += f"\n--- Wikipedia ---\n{wiki_info.get('summary', 'Aucune information trouvée')}"
-    
-    formatted_info += "\n\n=== FIN DES INFORMATIONS WEB ===\n"
-    
-    return formatted_info
-
-def extract_text_from_pdf(pdf_file):
-    """Extrait le texte d'un fichier PDF avec OCR si nécessaire"""
-    try:
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        text = ""
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-        
-        if len(text.strip()) < 100:
-            st.warning("Peu de texte détecté dans ce PDF. Le document pourrait être scanné ou contenir principalement des images.")
-        
-        return text.strip()
-    except Exception as e:
-        st.error(f"Erreur lors de l'extraction du texte: {str(e)}")
-        return ""
-
-def process_uploaded_documents(uploaded_files):
-    """Traite tous les documents uploadés et extrait leur contenu"""
-    documents_content = []
-    
-    if uploaded_files:
-        for uploaded_file in uploaded_files:
-            st.info(f"Traitement du document: {uploaded_file.name}")
-            
-            if uploaded_file.type == "application/pdf":
-                # Réinitialiser le pointeur du fichier
-                uploaded_file.seek(0)
-                text_content = extract_text_from_pdf(uploaded_file)
-                
-                if text_content:
-                    documents_content.append({
-                        'filename': uploaded_file.name,
-                        'content': text_content[:5000]  # Limiter à 5000 caractères par document
-                    })
-                    st.success(f"✅ Document {uploaded_file.name} traité avec succès")
-                else:
-                    st.warning(f"⚠️ Aucun texte extrait de {uploaded_file.name}")
-    
-    return documents_content
-
-def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_content=None, web_data=None, max_tokens=800):
-    """Génère du contenu enrichi en incluant les documents uploadés ET les données web"""
-    try:
-        # Construire le prompt avec les documents et les données web
-        enhanced_prompt = prompt
-        
-        # Ajouter les informations web
-        if web_data:
-            web_info = format_web_info_for_prompt(web_data)
-            enhanced_prompt = prompt + web_info
-        
-        # Ajouter les documents si disponibles
-        if documents_content and len(documents_content) > 0:
-            docs_text = "\n\nDOCUMENTS TECHNIQUES FOURNIS :\n"
-            for i, doc in enumerate(documents_content, 1):
-                docs_text += f"\n--- Document {i}: {doc['filename']} ---\n"
-                docs_text += doc['content'][:2000]  # Limiter chaque document à 2000 caractères
-                docs_text += "\n"
-            
-            enhanced_prompt += docs_text + "\n\nVeuillez intégrer les informations de ces documents techniques ET les données web dans votre analyse."
-        elif web_data:
-            enhanced_prompt += "\n\nVeuillez intégrer les informations web collectées dans votre analyse."
-        
-        if 'groq' in clients:
-            response = clients['groq'].chat.completions.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "Vous êtes un expert en urbanisme et développement urbain en Afrique. Analysez les documents fournis et les informations web collectées, puis intégrez-les dans vos réponses. Rédigez du contenu professionnel, détaillé et précis sans emojis. Citez vos sources quand vous utilisez des informations externes."
-                    },
-                    {
-                        "role": "user",
-                        "content": enhanced_prompt
-                    }
-                ],
-                model="llama-3.1-8b-instant",
-                max_tokens=max_tokens,
-                temperature=0.7
-            )
-            return response.choices[0].message.content
-        
-        elif 'openai' in clients:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "Vous êtes un expert en urbanisme et développement urbain en Afrique. Analysez les documents fournis et les informations web collectées, puis intégrez-les dans vos réponses. Rédigez du contenu professionnel, détaillé et précis sans emojis. Citez vos sources quand vous utilisez des informations externes."},
-                    {"role": "user", "content": enhanced_prompt}
-                ],
-                max_tokens=max_tokens,
-                temperature=0.7
-            )
-            return response.choices[0].message.content
-        
-        else:
-            return "Contenu générique - Aucun client IA disponible"
-            
-    except Exception as e:
-        st.error(f"Erreur lors de la génération de contenu: {str(e)}")
-        return f"Erreur de génération pour: {prompt[:50]}..."
-
-def generate_enhanced_content_with_docs(prompt, clients, documents_content=None, max_tokens=800):
-    """Génère du contenu enrichi avec gestion des limites (fonction de compatibilité)"""
-    return generate_enhanced_content_with_docs_and_web(prompt, clients, documents_content, None, max_tokens)
-
-def generate_enhanced_content(prompt, clients, max_tokens=800):
-    """Génère du contenu enrichi avec gestion des limites (fonction de compatibilité)"""
-    return generate_enhanced_content_with_docs_and_web(prompt, clients, None, None, max_tokens)
-
-def create_demographic_chart(city_data):
-    """Crée un graphique démographique"""
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=('Répartition par âge', 'Croissance démographique', 
-                       'Densité urbaine', 'Migration urbaine'),
-        specs=[[{"type": "pie"}, {"type": "bar"}],
-               [{"type": "scatter"}, {"type": "bar"}]]
+    # Infrastructure (0-100)
+    infra_score = (
+        (data.get('electricity_access', 0) * 0.3) +
+        (data.get('water_access', 0) * 0.3) +
+        (data.get('internet_penetration', 0) * 0.2) +
+        (data.get('road_quality', 50) * 0.2)
     )
+    scores['infrastructure'] = min(100, infra_score)
     
-    # Graphique en secteurs pour les groupes d'âge
-    age_groups = ['0-14 ans', '15-64 ans', '65+ ans']
-    age_values = [42.5, 54.3, 3.2]
-    
-    fig.add_trace(
-        go.Pie(labels=age_groups, values=age_values, name="Âge"),
-        row=1, col=1
+    # Gouvernance (0-100)
+    gov_score = (
+        (data.get('digital_services', 0) * 0.4) +
+        (data.get('transparency_index', 50) * 0.3) +
+        (data.get('citizen_participation', 30) * 0.3)
     )
+    scores['governance'] = min(100, gov_score)
     
-    # Graphique de croissance
-    years = ['2018', '2019', '2020', '2021', '2022']
-    population = [1050000, 1087500, 1126250, 1165656, 1206428]
-    
-    fig.add_trace(
-        go.Bar(x=years, y=population, name="Population"),
-        row=1, col=2
+    # Environnement (0-100)
+    env_score = (
+        (100 - data.get('pollution_level', 50)) * 0.4 +
+        (data.get('green_spaces', 20) * 0.3) +
+        (data.get('waste_management', 40) * 0.3)
     )
+    scores['environment'] = min(100, env_score)
     
-    # Densité urbaine
-    districts = ['Centre', 'Nord', 'Sud', 'Est', 'Ouest']
-    density = [8500, 6200, 4800, 5500, 7200]
+    # Économie (0-100)
+    eco_score = (
+        (data.get('gdp_per_capita', 2000) / 50) +  # Normalisé
+        (data.get('employment_rate', 60)) +
+        (data.get('business_environment', 50))
+    ) / 3
+    scores['economy'] = min(100, eco_score)
     
-    fig.add_trace(
-        go.Scatter(x=districts, y=density, mode='markers+lines', name="Densité"),
-        row=2, col=1
+    # Social (0-100)
+    social_score = (
+        (data.get('education_index', 60) * 0.4) +
+        (data.get('health_index', 60) * 0.3) +
+        (data.get('safety_index', 50) * 0.3)
     )
+    scores['social'] = min(100, social_score)
     
-    # Migration
-    migration_data = ['Arrivées', 'Départs', 'Solde migratoire']
-    migration_values = [45000, 28000, 17000]
+    # Score global
+    total_score = sum(scores[key] * weights[key] for key in weights.keys())
     
-    fig.add_trace(
-        go.Bar(x=migration_data, y=migration_values, name="Migration"),
-        row=2, col=2
-    )
-    
-    fig.update_layout(height=600, showlegend=False, title_text="Analyse Démographique Complète")
-    return fig
+    return total_score, scores
 
-def create_infrastructure_chart():
-    """Crée un graphique d'infrastructure"""
-    categories = ['Eau potable', 'Électricité', 'Assainissement', 'Routes', 'Télécommunications']
-    current_access = [45, 42, 25, 60, 78]
-    target_access = [80, 75, 60, 85, 90]
+def create_radar_chart(scores):
+    """Crée un graphique radar des scores"""
+    categories = ['Infrastructure', 'Gouvernance', 'Environnement', 'Économie', 'Social']
+    values = [scores['infrastructure'], scores['governance'], scores['environment'], 
+              scores['economy'], scores['social']]
     
     fig = go.Figure()
     
-    fig.add_trace(go.Bar(
-        name='Accès actuel (%)',
-        x=categories,
-        y=current_access,
-        marker_color='lightcoral'
-    ))
-    
-    fig.add_trace(go.Bar(
-        name='Objectif 2030 (%)',
-        x=categories,
-        y=target_access,
-        marker_color='lightblue'
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories,
+        fill='toself',
+        name='Score actuel',
+        line_color='rgb(30, 60, 114)',
+        fillcolor='rgba(30, 60, 114, 0.3)'
     ))
     
     fig.update_layout(
-        title='État des Infrastructures de Base',
-        xaxis_title='Services',
-        yaxis_title='Taux d\'accès (%)',
-        barmode='group',
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100]
+            )),
+        showlegend=True,
+        title="Profil Smart City",
         height=400
     )
     
     return fig
 
-def create_housing_analysis_chart():
-    """Crée un graphique d'analyse du logement"""
-    fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=('Types de logement', 'Qualité du logement'),
-        specs=[[{"type": "pie"}, {"type": "bar"}]]
+def create_comparison_chart(city_score, benchmarks):
+    """Crée un graphique de comparaison avec d'autres villes"""
+    cities = list(benchmarks.keys()) + ['Votre ville']
+    scores = list(benchmarks.values()) + [city_score]
+    colors_list = ['lightblue'] * len(benchmarks) + ['darkblue']
+    
+    fig = go.Figure(data=[
+        go.Bar(x=cities, y=scores, marker_color=colors_list)
+    ])
+    
+    fig.update_layout(
+        title="Comparaison avec d'autres villes",
+        xaxis_title="Villes",
+        yaxis_title="Score Smart City",
+        height=400
     )
     
-    # Types de logement
-    housing_types = ['Béton/Dur', 'Semi-dur', 'Traditionnel', 'Précaire']
-    housing_values = [35, 25, 25, 15]
-    
-    fig.add_trace(
-        go.Pie(labels=housing_types, values=housing_values, name="Types"),
-        row=1, col=1
-    )
-    
-    # Qualité du logement
-    quality_aspects = ['Eau courante', 'Électricité', 'Toilettes', 'Cuisine équipée']
-    quality_percentages = [45, 42, 12, 28]
-    
-    fig.add_trace(
-        go.Bar(x=quality_aspects, y=quality_percentages, name="Qualité"),
-        row=1, col=2
-    )
-    
-    fig.update_layout(height=400, showlegend=False)
     return fig
 
-def generate_professional_pdf_report(city_name, report_data, charts_data):
-    """Génère un rapport PDF professionnel"""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+def generate_recommendations(scores, city_data):
+    """Génère des recommandations basées sur les scores"""
+    recommendations = []
     
-    # Styles
+    # Analyse des points faibles
+    weak_areas = {k: v for k, v in scores.items() if v < 60}
+    
+    if 'infrastructure' in weak_areas:
+        recommendations.append({
+            'priority': 'Haute',
+            'domain': 'Infrastructure',
+            'action': 'Améliorer l\'accès à l\'électricité et à l\'eau potable',
+            'impact': 'Fondamental pour le développement urbain'
+        })
+    
+    if 'governance' in weak_areas:
+        recommendations.append({
+            'priority': 'Haute',
+            'domain': 'Gouvernance',
+            'action': 'Développer les services numériques municipaux',
+            'impact': 'Amélioration de l\'efficacité administrative'
+        })
+    
+    if 'environment' in weak_areas:
+        recommendations.append({
+            'priority': 'Moyenne',
+            'domain': 'Environnement',
+            'action': 'Créer plus d\'espaces verts et améliorer la gestion des déchets',
+            'impact': 'Qualité de vie et durabilité'
+        })
+    
+    return recommendations
+
+def create_pdf_report(city_name, total_score, scores, recommendations, charts_data):
+    """Génère un rapport PDF"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     styles = getSampleStyleSheet()
+    story = []
+    
+    # Titre
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=24,
         spaceAfter=30,
         alignment=TA_CENTER,
-        textColor=colors.HexColor('#1f4e79')
+        textColor=colors.HexColor('#1e3c72')
     )
     
-    section_style = ParagraphStyle(
-        'SectionHeader',
-        parent=styles['Heading2'],
-        fontSize=16,
-        spaceAfter=12,
-        spaceBefore=20,
-        textColor=colors.HexColor('#2c5aa0')
-    )
+    story.append(Paragraph(f"Diagnostic Smart City - {city_name}", title_style))
+    story.append(Spacer(1, 20))
     
-    body_style = ParagraphStyle(
-        'BodyText',
+    # Score global
+    score_style = ParagraphStyle(
+        'ScoreStyle',
         parent=styles['Normal'],
-        fontSize=11,
-        spaceAfter=12,
-        alignment=TA_JUSTIFY,
-        leading=14
+        fontSize=16,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#2a5298')
     )
     
-    story = []
+    story.append(Paragraph(f"Score Global: {total_score:.1f}/100", score_style))
+    story.append(Spacer(1, 20))
     
-    # Page de titre
-    story.append(Paragraph(f"DIAGNOSTIC URBAIN INTELLIGENT", title_style))
-    story.append(Paragraph(f"Ville de {city_name}", title_style))
-    story.append(Spacer(1, 50))
-    story.append(Paragraph(f"Rapport généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", body_style))
-    story.append(Paragraph("UrbanAI Diagnostic Platform", body_style))
-    story.append(PageBreak())
+    # Scores détaillés
+    story.append(Paragraph("Scores par Domaine", styles['Heading2']))
     
-    # Table des matières
-    story.append(Paragraph("TABLE DES MATIÈRES", section_style))
-    toc_data = [
-        ["Section", "Page"],
-        ["1. Résumé exécutif", "3"],
-        ["2. Contexte démographique et social", "5"],
-        ["3. Analyse de l'habitat et des infrastructures", "8"],
-        ["4. Défis et opportunités identifiés", "11"],
-        ["5. Recommandations stratégiques", "14"],
-        ["6. Graphiques et visualisations", "17"],
-        ["7. Conclusion prospective", "19"],
-        ["Annexes et références", "21"]
-    ]
+    score_data = [['Domaine', 'Score', 'Niveau']]
+    for domain, score in scores.items():
+        level = 'Excellent' if score >= 80 else 'Bon' if score >= 60 else 'À améliorer'
+        score_data.append([domain.capitalize(), f"{score:.1f}", level])
     
-    toc_table = Table(toc_data, colWidths=[4*inch, 1*inch])
-    toc_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+    score_table = Table(score_data)
+    score_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3c72')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
@@ -575,1040 +386,674 @@ def generate_professional_pdf_report(city_name, report_data, charts_data):
         ('GRID', (0, 0), (-1, -1), 1, colors.black)
     ]))
     
-    story.append(toc_table)
-    story.append(PageBreak())
+    story.append(score_table)
+    story.append(Spacer(1, 20))
     
-    # Contenu des sections
-    sections = [
-        ("1. RÉSUMÉ EXÉCUTIF", report_data.get('executive_summary', '')),
-        ("2. CONTEXTE DÉMOGRAPHIQUE ET SOCIAL", report_data.get('demographic_context', '')),
-        ("3. ANALYSE DE L'HABITAT ET DES INFRASTRUCTURES", report_data.get('housing_analysis', '')),
-        ("4. DÉFIS ET OPPORTUNITÉS IDENTIFIÉS", report_data.get('challenges', '')),
-        ("5. RECOMMANDATIONS STRATÉGIQUES", report_data.get('recommendations', '')),
-        ("6. GRAPHIQUES ET VISUALISATIONS", "Les graphiques détaillés sont présentés dans l'interface web interactive."),
-        ("7. CONCLUSION PROSPECTIVE", report_data.get('conclusion', ''))
-    ]
+    # Recommandations
+    story.append(Paragraph("Recommandations Prioritaires", styles['Heading2']))
     
-    for section_title, content in sections:
-        story.append(Paragraph(section_title, section_style))
-        story.append(Paragraph(content, body_style))
-        story.append(Spacer(1, 20))
+    for i, rec in enumerate(recommendations[:5], 1):
+        story.append(Paragraph(f"{i}. {rec['action']}", styles['Normal']))
+        story.append(Paragraph(f"   Domaine: {rec['domain']} | Priorité: {rec['priority']}", styles['Normal']))
+        story.append(Spacer(1, 10))
     
     doc.build(story)
     buffer.seek(0)
     return buffer
 
-def diagnostic_tab():
-    """Onglet Diagnostic avec formulaire détaillé"""
-    st.markdown('<div class="main-header">🏙️ DIAGNOSTIC URBAIN INTELLIGENT</div>', unsafe_allow_html=True)
+def data_input_tab():
+    """Onglet de saisie des données"""
+    st.markdown('<div class="main-header">📊 SAISIE DES DONNÉES</div>', unsafe_allow_html=True)
     
-    # Initialisation des clients IA
-    clients = initialize_ai_clients()
-    
-    # Formulaire détaillé dans la sidebar
-    with st.sidebar:
-        st.header("⚙️ Configuration du Diagnostic")
-        
-        # Informations générales
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🌍 Informations Générales")
-        city_name = st.text_input("Nom de la ville", value="Nouakchott")
-        country = st.text_input("Pays", value="Mauritanie")
-        region = st.text_input("Région/Province", value="Nouakchott")
-        diagnostic_date = st.date_input("Date du diagnostic", value=datetime.now())
-        
-        # Option pour activer la recherche web
-        enable_Web_Search = st.checkbox("🌐 Enrichir avec des données web", value=True, help="Collecte automatiquement des informations sur la ville depuis Wikipedia et autres sources")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Données démographiques
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("👥 Données Démographiques")
-        population = st.number_input("Population totale (habitants)", value=1200000, step=10000)
-        growth_rate = st.number_input("Taux de croissance annuel (%)", value=3.5, step=0.1)
-        urban_area = st.number_input("Superficie urbaine (km²)", value=1000, step=10)
-        density = st.number_input("Densité urbaine (hab/km²)", value=int(population/urban_area), step=100)
-        youth_percentage = st.slider("Pourcentage de jeunes (0-25 ans) (%)", 0, 100, 60)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Infrastructures de base
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🏗️ Infrastructures de Base")
-        water_access = st.slider("Accès à l'eau potable (%)", 0, 100, 45)
-        electricity_access = st.slider("Accès à l'électricité (%)", 0, 100, 42)
-        sanitation_access = st.slider("Accès à l'assainissement (%)", 0, 100, 25)
-        road_quality = st.selectbox("Qualité du réseau routier", ["Très mauvaise", "Mauvaise", "Moyenne", "Bonne", "Très bonne"])
-        internet_access = st.slider("Accès à Internet (%)", 0, 100, 35)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Logement et habitat
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🏠 Logement et Habitat")
-        housing_deficit = st.number_input("Déficit en logements", value=50000, step=1000)
-        informal_settlements = st.slider("Population en habitat informel (%)", 0, 100, 40)
-        housing_cost = st.number_input("Coût moyen du logement (USD/m²)", value=200, step=10)
-        construction_materials = st.multiselect(
-            "Matériaux de construction dominants",
-            ["Béton", "Brique", "Terre", "Tôle", "Bois", "Autres"],
-            default=["Béton", "Tôle"]
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Économie et emploi
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("💼 Économie et Emploi")
-        unemployment_rate = st.slider("Taux de chômage (%)", 0, 100, 25)
-        informal_economy = st.slider("Économie informelle (%)", 0, 100, 70)
-        main_sectors = st.multiselect(
-            "Secteurs économiques principaux",
-            ["Agriculture", "Pêche", "Commerce", "Services", "Industrie", "Tourisme", "Mines", "Autres"],
-            default=["Commerce", "Services", "Pêche"]
-        )
-        gdp_per_capita = st.number_input("PIB par habitant (USD)", value=1500, step=100)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Services sociaux
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🏥 Services Sociaux")
-        health_facilities = st.number_input("Nombre d'établissements de santé", value=15, step=1)
-        schools = st.number_input("Nombre d'écoles", value=120, step=5)
-        literacy_rate = st.slider("Taux d'alphabétisation (%)", 0, 100, 65)
-        infant_mortality = st.number_input("Mortalité infantile (pour 1000)", value=45, step=1)
-        life_expectancy = st.number_input("Espérance de vie (années)", value=65, step=1)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Environnement et climat
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🌱 Environnement et Climat")
-        climate_risks = st.multiselect(
-            "Risques climatiques principaux",
-            ["Inondations", "Sécheresse", "Érosion côtière", "Tempêtes de sable", "Canicules", "Autres"],
-            default=["Inondations", "Sécheresse"]
-        )
-        waste_management = st.selectbox("Gestion des déchets", ["Très mauvaise", "Mauvaise", "Moyenne", "Bonne", "Très bonne"])
-        green_spaces = st.slider("Espaces verts par habitant (m²)", 0, 50, 5)
-        air_quality = st.selectbox("Qualité de l'air", ["Très mauvaise", "Mauvaise", "Moyenne", "Bonne", "Très bonne"])
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Transport et mobilité
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🚌 Transport et Mobilité")
-        public_transport = st.selectbox("Transport public", ["Inexistant", "Très limité", "Limité", "Développé", "Très développé"])
-        vehicle_ownership = st.slider("Taux de motorisation (véhicules/1000 hab)", 0, 500, 80)
-        traffic_congestion = st.selectbox("Congestion routière", ["Très faible", "Faible", "Modérée", "Forte", "Très forte"])
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Documents techniques
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("📄 Documents Techniques")
-        uploaded_files = st.file_uploader(
-            "Télécharger des documents (PDF)",
-            type=['pdf'],
-            accept_multiple_files=True,
-            help="Plans d'urbanisme, études, rapports, etc."
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Type et objectif du diagnostic
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("🎯 Type et Objectif du Diagnostic")
-        diagnostic_type = st.selectbox(
-            "Type de diagnostic",
-            ["Diagnostic général", "Diagnostic thématique - Logement", "Diagnostic thématique - Transport", 
-             "Diagnostic thématique - Environnement", "Diagnostic thématique - Économie", "Diagnostic thématique - Social"]
-        )
-        
-        diagnostic_objective = st.text_area(
-            "Objectif spécifique du diagnostic",
-            value="Évaluer l'état actuel du développement urbain et identifier les priorités d'intervention pour améliorer les conditions de vie des habitants.",
-            height=100
-        )
-        
-        target_audience = st.multiselect(
-            "Public cible du rapport",
-            ["Autorités locales", "Gouvernement national", "Bailleurs de fonds", "ONG", "Secteur privé", "Citoyens", "Chercheurs"],
-            default=["Autorités locales", "Bailleurs de fonds"]
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Commentaires libres
-        st.markdown('<div class="form-section">', unsafe_allow_html=True)
-        st.subheader("💭 Commentaires et Observations")
-        additional_comments = st.text_area(
-            "Commentaires libres, contexte particulier, défis spécifiques...",
-            height=120,
-            placeholder="Décrivez ici tout élément de contexte important, défis particuliers, projets en cours, etc."
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        generate_report = st.button("🚀 Générer le rapport complet", type="primary", use_container_width=True)
-    
-    # Interface principale pour le rapport
-    if generate_report:
-        with st.spinner("Génération du rapport en cours..."):
-            
-            # Collecte des données web si activée
-            web_data = None
-            if enable_Web_Search:
-                with st.spinner("🌐 Collecte des données web en cours..."):
-                    web_data = get_web_urban_data(city_name, country)
-                    
-                    # Afficher les informations web collectées
-                    if web_data and web_data.get('wikipedia_info', {}).get('found', False):
-                        wiki_info = web_data['wikipedia_info']
-                        st.markdown(f"""
-                        <div class="web-info-box">
-                            <h4>🌐 Informations Web Collectées</h4>
-                            <p><strong>Source Wikipedia:</strong> {wiki_info.get('title', 'N/A')}</p>
-                            <p>{wiki_info.get('summary', 'Aucun résumé disponible')[:200]}...</p>
-                            {f'<p><a href="{wiki_info.get("url")}" target="_blank">Voir la page complète</a></p>' if wiki_info.get('url') else ''}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.info("🌐 Recherche web effectuée - Informations limitées trouvées")
-            
-            # Traitement des documents uploadés
-            documents_content = process_uploaded_documents(uploaded_files)
-            
-            if documents_content:
-                st.success(f"📄 {len(documents_content)} document(s) analysé(s) et intégré(s) dans le rapport")
-                
-                # Afficher un aperçu des documents traités
-                with st.expander("📋 Aperçu des documents traités"):
-                    for doc in documents_content:
-                        st.write(f"**{doc['filename']}**")
-                        st.write(f"Extrait: {doc['content'][:200]}...")
-                        st.write("---")
-            
-            # Affichage des informations de configuration
-            web_status = "✅ Activée" if enable_Web_Search else "❌ Désactivée"
-            st.info(f"""
-            **Diagnostic configuré pour:** {city_name}, {country}  
-            **Type:** {diagnostic_type}  
-            **Population:** {population:,} habitants  
-            **Date:** {diagnostic_date.strftime('%d/%m/%Y')}  
-            **Recherche web:** {web_status}  
-            **Documents analysés:** {len(documents_content) if documents_content else 0}
-            """)
-            
-            # Table des matières dynamique
-            st.markdown('<div class="section-header">📋 TABLE DES MATIÈRES</div>', unsafe_allow_html=True)
-            
-            toc_items = [
-                ("1. Résumé exécutif", "3"),
-                ("2. Contexte démographique et social", "5"),
-                ("3. Analyse de l'habitat et des infrastructures", "8"),
-                ("4. Défis et opportunités identifiés", "11"),
-                ("5. Recommandations stratégiques", "14"),
-                ("6. Graphiques et visualisations", "17"),
-                ("7. Conclusion prospective", "19")
-            ]
-            
-            for item, page in toc_items:
-                st.markdown(f'<div class="toc-item"><span>{item}</span><span>Page {page}</span></div>', unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            # 1. RÉSUMÉ EXÉCUTIF
-            st.markdown('<div class="section-header">1. RÉSUMÉ EXÉCUTIF</div>', unsafe_allow_html=True)
-            
-            executive_prompt = f"""
-            Rédigez un résumé exécutif professionnel de 400 mots pour le diagnostic urbain de {city_name}, {country}.
-            Type de diagnostic: {diagnostic_type}
-            Objectif: {diagnostic_objective}
-            Population: {population:,} habitants, croissance: {growth_rate}%.
-            Accès eau: {water_access}%, électricité: {electricity_access}%, assainissement: {sanitation_access}%.
-            Chômage: {unemployment_rate}%, habitat informel: {informal_settlements}%.
-            Risques climatiques: {', '.join(climate_risks) if climate_risks else 'Non spécifiés'}.
-            Contexte particulier: {additional_comments if additional_comments else 'Aucun commentaire spécifique'}.
-            Incluez: situation actuelle, défis principaux, opportunités, recommandations clés.
-            Style: professionnel, sans emojis, paragraphes structurés.
-            """
-            
-            executive_summary = generate_enhanced_content_with_docs_and_web(executive_prompt, clients, documents_content, web_data, 600)
-            st.markdown(f'<div class="professional-text">{executive_summary}</div>', unsafe_allow_html=True)
-            
-            # 2. CONTEXTE DÉMOGRAPHIQUE ET SOCIAL
-            st.markdown('<div class="section-header">2. CONTEXTE DÉMOGRAPHIQUE ET SOCIAL</div>', unsafe_allow_html=True)
-            
-            # 2.1 Profil démographique
-            st.markdown('<div class="subsection-header">2.1 Profil démographique</div>', unsafe_allow_html=True)
-            
-            demo_prompt = f"""
-            Analysez le profil démographique de {city_name} avec {population:,} habitants et {growth_rate}% de croissance.
-            Densité: {density} hab/km², jeunes (0-25 ans): {youth_percentage}%.
-            Détaillez: structure par âge, migration, densité urbaine, projections 2030.
-            Comparaisons régionales avec autres capitales sahéliennes.
-            300 mots, style analytique professionnel.
-            """
-            
-            demographic_analysis = generate_enhanced_content_with_docs_and_web(demo_prompt, clients, documents_content, web_data, 500)
-            st.markdown(f'<div class="professional-text">{demographic_analysis}</div>', unsafe_allow_html=True)
-            
-            # Graphique démographique
-            demo_chart = create_demographic_chart({"population": population, "growth": growth_rate})
-            st.plotly_chart(demo_chart, use_container_width=True)
-            
-            # 2.2 Contexte socio-économique
-            st.markdown('<div class="subsection-header">2.2 Contexte socio-économique</div>', unsafe_allow_html=True)
-            
-            socio_prompt = f"""
-            Analysez le contexte socio-économique de {city_name}:
-            - Secteurs économiques dominants: {', '.join(main_sectors) if main_sectors else 'Non spécifiés'}
-            - Chômage: {unemployment_rate}%, économie informelle: {informal_economy}%
-            - PIB par habitant: {gdp_per_capita} USD
-            - Taux d'alphabétisation: {literacy_rate}%
-            - Mortalité infantile: {infant_mortality}‰, espérance de vie: {life_expectancy} ans
-            - Établissements de santé: {health_facilities}, écoles: {schools}
-            350 mots, données chiffrées, analyse approfondie.
-            """
-            
-            socio_analysis = generate_enhanced_content_with_docs_and_web(socio_prompt, clients, documents_content, web_data, 600)
-            st.markdown(f'<div class="professional-text">{socio_analysis}</div>', unsafe_allow_html=True)
-            
-            # Métriques socio-économiques
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Taux de chômage", f"{unemployment_rate}%", "-2.1%")
-            with col2:
-                st.metric("PIB par habitant", f"{gdp_per_capita} USD", "+4.2%")
-            with col3:
-                st.metric("Taux d'alphabétisation", f"{literacy_rate}%", "+3.5%")
-            with col4:
-                st.metric("Économie informelle", f"{informal_economy}%", "-1.8%")
-            
-            # 3. ANALYSE DE L'HABITAT ET DES INFRASTRUCTURES
-            st.markdown('<div class="section-header">3. ANALYSE DE L\'HABITAT ET DES INFRASTRUCTURES</div>', unsafe_allow_html=True)
-            
-            # 3.1 État du parc de logements
-            st.markdown('<div class="subsection-header">3.1 État du parc de logements</div>', unsafe_allow_html=True)
-            
-            housing_prompt = f"""
-            Analysez l'état du parc de logements à {city_name}:
-            - Déficit en logements: {housing_deficit:,} unités
-            - Population en habitat informel: {informal_settlements}%
-            - Coût du logement: {housing_cost} USD/m²
-            - Matériaux dominants: {', '.join(construction_materials) if construction_materials else 'Non spécifiés'}
-            - Accès eau: {water_access}%, électricité: {electricity_access}%
-            Détaillez: types de logements, qualité du bâti, surpeuplement, marché immobilier, quartiers informels.
-            400 mots, analyse technique détaillée.
-            """
-            
-            housing_analysis = generate_enhanced_content_with_docs_and_web(housing_prompt, clients, documents_content, web_data, 700)
-            st.markdown(f'<div class="professional-text">{housing_analysis}</div>', unsafe_allow_html=True)
-            
-            # Graphique logement
-            housing_chart = create_housing_analysis_chart()
-            st.plotly_chart(housing_chart, use_container_width=True)
-            
-            # 3.2 Infrastructures de base
-            st.markdown('<div class="subsection-header">3.2 Infrastructures de base</div>', unsafe_allow_html=True)
-            
-            infra_prompt = f"""
-            Évaluez les infrastructures de base de {city_name}:
-            - Eau potable: {water_access}% de couverture
-            - Électricité: {electricity_access}% de couverture
-            - Assainissement: {sanitation_access}% de couverture
-            - Qualité des routes: {road_quality}
-            - Accès Internet: {internet_access}%
-            - Gestion des déchets: {waste_management}
-            - Transport public: {public_transport}
-            450 mots, évaluation technique approfondie.
-            """
-            
-            infrastructure_analysis = generate_enhanced_content_with_docs_and_web(infra_prompt, clients, documents_content, web_data, 700)
-            st.markdown(f'<div class="professional-text">{infrastructure_analysis}</div>', unsafe_allow_html=True)
-            
-            # Graphique infrastructures
-            infra_chart = create_infrastructure_chart()
-            st.plotly_chart(infra_chart, use_container_width=True)
-            
-            # 4. DÉFIS ET OPPORTUNITÉS IDENTIFIÉS
-            st.markdown('<div class="section-header">4. DÉFIS ET OPPORTUNITÉS IDENTIFIÉS</div>', unsafe_allow_html=True)
-            
-            # 4.1 Défis majeurs
-            st.markdown('<div class="subsection-header">4.1 Défis majeurs</div>', unsafe_allow_html=True)
-            
-            challenges_prompt = f"""
-            Identifiez et analysez les défis majeurs de {city_name}:
-            - Croissance démographique rapide ({growth_rate}%) et planification urbaine
-            - Déficit en logements ({housing_deficit:,} unités) et habitat informel ({informal_settlements}%)
-            - Insuffisance des services de base (eau: {water_access}%, électricité: {electricity_access}%)
-            - Chômage élevé ({unemployment_rate}%) et économie informelle ({informal_economy}%)
-            - Risques climatiques: {', '.join(climate_risks) if climate_risks else 'Non spécifiés'}
-            - Qualité de l'air: {air_quality}, gestion des déchets: {waste_management}
-            400 mots, analyse critique et factuelle.
-            """
-            
-            challenges_analysis = generate_enhanced_content_with_docs_and_web(challenges_prompt, clients, documents_content, web_data, 700)
-            st.markdown(f'<div class="professional-text">{challenges_analysis}</div>', unsafe_allow_html=True)
-            
-            # 4.2 Opportunités de développement
-            st.markdown('<div class="subsection-header">4.2 Opportunités de développement</div>', unsafe_allow_html=True)
-            
-            opportunities_prompt = f"""
-            Analysez les opportunités de développement pour {city_name}:
-            - Secteurs économiques porteurs: {', '.join(main_sectors) if main_sectors else 'À identifier'}
-            - Population jeune ({youth_percentage}% de moins de 25 ans)
-            - Potentiel de développement urbain sur {urban_area} km²
-            - Coopération internationale et financement
-            - Innovation technologique et villes intelligentes
-            - Partenariats public-privé
-            350 mots, vision prospective et réaliste.
-            """
-            
-            opportunities_analysis = generate_enhanced_content_with_docs_and_web(opportunities_prompt, clients, documents_content, web_data, 600)
-            st.markdown(f'<div class="professional-text">{opportunities_analysis}</div>', unsafe_allow_html=True)
-            
-            # 5. RECOMMANDATIONS STRATÉGIQUES
-            st.markdown('<div class="section-header">5. RECOMMANDATIONS STRATÉGIQUES</div>', unsafe_allow_html=True)
-            
-            # 5.1 Priorités à court terme (1-3 ans)
-            st.markdown('<div class="subsection-header">5.1 Priorités à court terme (1-3 ans)</div>', unsafe_allow_html=True)
-            
-            short_term_prompt = f"""
-            Formulez des recommandations prioritaires à court terme pour {city_name}:
-            - Amélioration urgente de l'accès à l'eau potable (actuellement {water_access}%)
-            - Extension du réseau électrique (actuellement {electricity_access}%)
-            - Programmes d'urgence pour l'habitat précaire ({informal_settlements}% de la population)
-            - Création d'emplois face au chômage de {unemployment_rate}%
-            - Renforcement des capacités institutionnelles
-            - Gestion des risques climatiques: {', '.join(climate_risks) if climate_risks else 'À définir'}
-            300 mots, recommandations concrètes et réalisables.
-            """
-            
-            short_term_reco = generate_enhanced_content_with_docs_and_web(short_term_prompt, clients, documents_content, web_data, 500)
-            st.markdown(f'<div class="professional-text">{short_term_reco}</div>', unsafe_allow_html=True)
-            
-            # 5.2 Stratégies à moyen terme (3-7 ans)
-            st.markdown('<div class="subsection-header">5.2 Stratégies à moyen terme (3-7 ans)</div>', unsafe_allow_html=True)
-            
-            medium_term_prompt = f"""
-            Développez des stratégies à moyen terme pour {city_name}:
-            - Planification urbaine intégrée pour gérer la croissance de {growth_rate}%
-            - Développement de nouveaux quartiers planifiés
-            - Modernisation des infrastructures existantes
-            - Diversification économique (secteurs actuels: {', '.join(main_sectors) if main_sectors else 'À développer'})
-            - Renforcement de la résilience climatique
-            - Amélioration du transport public (actuellement: {public_transport})
-            350 mots, approche stratégique et intégrée.
-            """
-            
-            medium_term_reco = generate_enhanced_content_with_docs_and_web(medium_term_prompt, clients, documents_content, web_data, 600)
-            st.markdown(f'<div class="professional-text">{medium_term_reco}</div>', unsafe_allow_html=True)
-            
-            # 5.3 Vision à long terme (7-15 ans)
-            st.markdown('<div class="subsection-header">5.3 Vision à long terme (7-15 ans)</div>', unsafe_allow_html=True)
-            
-            long_term_prompt = f"""
-            Esquissez une vision à long terme pour {city_name}:
-            - Transformation en ville intelligente et durable
-            - Hub économique régional basé sur {', '.join(main_sectors) if main_sectors else 'les secteurs porteurs'}
-            - Modèle de développement urbain africain
-            - Objectifs de développement durable (ODD 11)
-            - Innovation et technologies urbaines
-            - Résilience face aux défis climatiques
-            300 mots, vision ambitieuse mais réaliste.
-            """
-            
-            long_term_reco = generate_enhanced_content_with_docs_and_web(long_term_prompt, clients, documents_content, web_data, 500)
-            st.markdown(f'<div class="professional-text">{long_term_reco}</div>', unsafe_allow_html=True)
-            
-            # 6. GRAPHIQUES ET VISUALISATIONS
-            st.markdown('<div class="section-header">6. GRAPHIQUES ET VISUALISATIONS</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="subsection-header">6.1 Tableau de bord des indicateurs clés</div>', unsafe_allow_html=True)
-            
-            # Indicateurs synthétiques
-            indicators_data = {
-                'Indicateur': ['Accès eau potable', 'Accès électricité', 'Assainissement', 'Logement décent', 'Transport public'],
-                'Valeur actuelle': [water_access, electricity_access, sanitation_access, 100-informal_settlements, 30 if public_transport in ["Développé", "Très développé"] else 15],
-                'Objectif 2030': [80, 75, 60, 70, 60],
-                'Écart': [80-water_access, 75-electricity_access, 60-sanitation_access, 70-(100-informal_settlements), 45]
-            }
-            
-            df_indicators = pd.DataFrame(indicators_data)
-            st.dataframe(df_indicators, use_container_width=True)
-            
-            # Graphique radar des performances
-            categories = ['Eau', 'Électricité', 'Assainissement', 'Logement', 'Transport', 'Santé', 'Éducation']
-            current_values = [water_access, electricity_access, sanitation_access, 100-informal_settlements, 
-                            30 if public_transport in ["Développé", "Très développé"] else 15, 
-                            max(0, 100-infant_mortality), literacy_rate]
-            target_values = [80, 75, 60, 70, 60, 70, 85]
-            
-            fig_radar = go.Figure()
-            
-            fig_radar.add_trace(go.Scatterpolar(
-                r=current_values,
-                theta=categories,
-                fill='toself',
-                name='Situation actuelle',
-                line_color='red'
-            ))
-            
-            fig_radar.add_trace(go.Scatterpolar(
-                r=target_values,
-                theta=categories,
-                fill='toself',
-                name='Objectifs 2030',
-                line_color='blue'
-            ))
-            
-            fig_radar.update_layout(
-                polar=dict(
-                    radialaxis=dict(
-                        visible=True,
-                        range=[0, 100]
-                    )),
-                showlegend=True,
-                title="Radar des Performances Urbaines"
-            )
-            
-            st.plotly_chart(fig_radar, use_container_width=True)
-            
-            # 7. CONCLUSION PROSPECTIVE
-            st.markdown('<div class="section-header">7. CONCLUSION PROSPECTIVE</div>', unsafe_allow_html=True)
-            
-            conclusion_prompt = f"""
-            Rédigez une conclusion prospective pour le diagnostic de {city_name}:
-            - Synthèse des enjeux majeurs identifiés
-            - Potentiel de transformation urbaine
-            - Conditions de succès des recommandations
-            - Rôle dans le développement régional
-            - Appel à l'action pour les parties prenantes: {', '.join(target_audience) if target_audience else 'toutes les parties prenantes'}
-            Contexte spécifique: {additional_comments if additional_comments else 'Aucun élément particulier'}
-            400 mots, ton prospectif et mobilisateur.
-            """
-            
-            conclusion = generate_enhanced_content_with_docs_and_web(conclusion_prompt, clients, documents_content, web_data, 700)
-            st.markdown(f'<div class="professional-text">{conclusion}</div>', unsafe_allow_html=True)
-            
-            # Génération du PDF
-            st.markdown("---")
-            st.subheader("📄 Téléchargement du rapport")
-            
-            report_data = {
-                'executive_summary': executive_summary,
-                'demographic_context': demographic_analysis + " " + socio_analysis,
-                'housing_analysis': housing_analysis + " " + infrastructure_analysis,
-                'challenges': challenges_analysis + " " + opportunities_analysis,
-                'recommendations': short_term_reco + " " + medium_term_reco + " " + long_term_reco,
-                'conclusion': conclusion
-            }
-            
-            pdf_buffer = generate_professional_pdf_report(city_name, report_data, {})
-            
-            st.download_button(
-                label="📥 Télécharger le rapport PDF",
-                data=pdf_buffer.getvalue(),
-                file_name=f"Diagnostic_Urbain_{city_name}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf"
-            )
-            
-            st.success("✅ Rapport généré avec succès!")
-            
-            # Métadonnées du rapport
-            st.markdown("---")
-            st.markdown("### 📋 Métadonnées du rapport")
-            web_sources = ""
-            if web_data and web_data.get('wikipedia_info', {}).get('found', False):
-                web_sources = f"Wikipedia: {web_data['wikipedia_info'].get('title', 'N/A')}"
-            
-            st.info(f"""
-            **Ville analysée:** {city_name}, {country}  
-            **Type de diagnostic:** {diagnostic_type}  
-            **Date de génération:** {datetime.now().strftime('%d/%m/%Y à %H:%M')}  
-            **Population:** {population:,} habitants  
-            **Taux de croissance:** {growth_rate}%  
-            **Public cible:** {', '.join(target_audience) if target_audience else 'Non spécifié'}  
-            **Documents analysés:** {len(documents_content) if documents_content else 0}  
-            **Sources web:** {web_sources if web_sources else 'Aucune'}  
-            **Plateforme:** UrbanAI Diagnostic Platform v2.1 (avec recherche web)
-            """)
-
-def dashboard_tab():
-    """Onglet Dashboard avec visualisations interactives"""
-    st.markdown('<div class="main-header">📊 TABLEAU DE BORD URBAIN</div>', unsafe_allow_html=True)
-    
-    # Métriques principales
-    col1, col2, col3, col4 = st.columns(4)
+    # Informations générales
+    st.subheader("🏙️ Informations Générales")
+    col1, col2 = st.columns(2)
     
     with col1:
-        st.metric(
-            label="Population urbaine",
-            value="1.2M",
-            delta="3.5%",
-            help="Croissance annuelle de la population"
-        )
+        city_name = st.text_input("Nom de la ville", value="Nouakchott")
+        country = st.text_input("Pays", value="Mauritanie")
+        population = st.number_input("Population", min_value=1000, value=1500000, step=1000)
     
     with col2:
-        st.metric(
-            label="Accès à l'eau",
-            value="45%",
-            delta="-5%",
-            delta_color="inverse",
-            help="Pourcentage de la population avec accès à l'eau potable"
-        )
-    
-    with col3:
-        st.metric(
-            label="Taux de chômage",
-            value="23.4%",
-            delta="-2.1%",
-            delta_color="inverse",
-            help="Évolution du taux de chômage"
-        )
-    
-    with col4:
-        st.metric(
-            label="PIB par habitant",
-            value="1,850 USD",
-            delta="4.2%",
-            help="Croissance du PIB par habitant"
-        )
+        area = st.number_input("Superficie (km²)", min_value=1, value=1000, step=10)
+        gdp_per_capita = st.number_input("PIB par habitant (USD)", min_value=100, value=2000, step=100)
+        year = st.selectbox("Année de référence", [2024, 2023, 2022, 2021], index=0)
     
     st.markdown("---")
     
-    # Graphiques interactifs
+    # Infrastructure
+    st.subheader("🏗️ Infrastructure")
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("🏠 Accès aux Services de Base")
-        
-        # Graphique en barres pour les services
-        services_data = {
-            'Service': ['Eau potable', 'Électricité', 'Assainissement', 'Internet', 'Transport public'],
-            'Accès (%)': [45, 42, 25, 35, 20],
-            'Objectif 2030 (%)': [80, 75, 60, 70, 50]
-        }
-        
-        df_services = pd.DataFrame(services_data)
-        
-        fig_services = px.bar(
-            df_services, 
-            x='Service', 
-            y=['Accès (%)', 'Objectif 2030 (%)'],
-            title="Accès aux Services vs Objectifs 2030",
-            barmode='group',
-            color_discrete_map={'Accès (%)': '#ff7f7f', 'Objectif 2030 (%)': '#7fbfff'}
-        )
-        
-        st.plotly_chart(fig_services, use_container_width=True)
+        electricity_access = st.slider("Accès à l'électricité (%)", 0, 100, 75)
+        water_access = st.slider("Accès à l'eau potable (%)", 0, 100, 60)
+        sanitation_access = st.slider("Accès à l'assainissement (%)", 0, 100, 40)
     
     with col2:
-        st.subheader("👥 Structure Démographique")
-        
-        # Graphique en secteurs pour les groupes d'âge
-        age_data = {
-            'Groupe d\'âge': ['0-14 ans', '15-64 ans', '65+ ans'],
-            'Population (%)': [42.5, 54.3, 3.2]
-        }
-        
-        fig_age = px.pie(
-            values=age_data['Population (%)'],
-            names=age_data['Groupe d\'âge'],
-            title="Répartition par Groupe d'Âge"
-        )
-        
-        st.plotly_chart(fig_age, use_container_width=True)
+        internet_penetration = st.slider("Pénétration Internet (%)", 0, 100, 45)
+        road_quality = st.slider("Qualité des routes (1-100)", 0, 100, 50)
+        public_transport = st.slider("Couverture transport public (%)", 0, 100, 30)
     
-    # Graphiques de tendances
-    st.subheader("📈 Tendances Urbaines")
+    st.markdown("---")
     
+    # Gouvernance
+    st.subheader("🏛️ Gouvernance")
     col1, col2 = st.columns(2)
     
     with col1:
-        # Évolution de la population
-        years = list(range(2018, 2024))
-        population_evolution = [1050000, 1087500, 1126250, 1165656, 1206428, 1248723]
-        
-        fig_pop = px.line(
-            x=years,
-            y=population_evolution,
-            title="Évolution de la Population (2018-2023)",
-            labels={'x': 'Année', 'y': 'Population'}
-        )
-        fig_pop.update_traces(line_color='#2E86AB', line_width=3)
-        st.plotly_chart(fig_pop, use_container_width=True)
+        digital_services = st.slider("Services numériques municipaux (%)", 0, 100, 25)
+        transparency_index = st.slider("Indice de transparence", 0, 100, 50)
     
     with col2:
-        # Évolution des infrastructures
-        infra_years = ['2020', '2021', '2022', '2023']
-        water_evolution = [38, 41, 43, 45]
-        electricity_evolution = [35, 38, 40, 42]
-        
-        fig_infra = go.Figure()
-        fig_infra.add_trace(go.Scatter(x=infra_years, y=water_evolution, mode='lines+markers', name='Eau potable'))
-        fig_infra.add_trace(go.Scatter(x=infra_years, y=electricity_evolution, mode='lines+markers', name='Électricité'))
-        
-        fig_infra.update_layout(
-            title="Évolution de l'Accès aux Services (%)",
-            xaxis_title="Année",
-            yaxis_title="Taux d'accès (%)"
-        )
-        
-        st.plotly_chart(fig_infra, use_container_width=True)
+        citizen_participation = st.slider("Participation citoyenne (%)", 0, 100, 30)
+        corruption_index = st.slider("Indice de corruption (0=très corrompu)", 0, 100, 40)
     
-    # Carte de chaleur des quartiers
-    st.subheader("🗺️ Analyse par Quartier")
+    st.markdown("---")
     
-    # Données simulées pour les quartiers
-    quartiers_data = {
-        'Quartier': ['Centre-ville', 'Tevragh-Zeina', 'Ksar', 'Sebkha', 'Arafat', 'Dar Naim', 'El Mina', 'Toujounine'],
-        'Population': [85000, 120000, 95000, 180000, 200000, 150000, 110000, 75000],
-        'Accès Eau (%)': [75, 65, 45, 35, 25, 40, 55, 30],
-        'Accès Électricité (%)': [80, 70, 50, 40, 30, 45, 60, 35],
-        'Densité (hab/km²)': [8500, 6200, 4800, 9200, 12000, 7500, 5800, 3200]
+    # Environnement
+    st.subheader("🌱 Environnement")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        air_quality = st.slider("Qualité de l'air (0=très pollué, 100=excellent)", 0, 100, 60)
+        green_spaces = st.slider("Espaces verts par habitant (m²)", 0, 50, 5)
+    
+    with col2:
+        waste_management = st.slider("Efficacité gestion des déchets (%)", 0, 100, 40)
+        renewable_energy = st.slider("Part énergies renouvelables (%)", 0, 100, 10)
+    
+    st.markdown("---")
+    
+    # Social
+    st.subheader("👥 Indicateurs Sociaux")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        education_index = st.slider("Indice d'éducation", 0, 100, 60)
+        health_index = st.slider("Indice de santé", 0, 100, 55)
+    
+    with col2:
+        employment_rate = st.slider("Taux d'emploi (%)", 0, 100, 45)
+        safety_index = st.slider("Indice de sécurité", 0, 100, 50)
+    
+    # Stockage des données dans session_state
+    city_data = {
+        'city_name': city_name,
+        'country': country,
+        'population': population,
+        'area': area,
+        'gdp_per_capita': gdp_per_capita,
+        'year': year,
+        'electricity_access': electricity_access,
+        'water_access': water_access,
+        'sanitation_access': sanitation_access,
+        'internet_penetration': internet_penetration,
+        'road_quality': road_quality,
+        'public_transport': public_transport,
+        'digital_services': digital_services,
+        'transparency_index': transparency_index,
+        'citizen_participation': citizen_participation,
+        'corruption_index': corruption_index,
+        'air_quality': air_quality,
+        'green_spaces': green_spaces,
+        'waste_management': waste_management,
+        'renewable_energy': renewable_energy,
+        'education_index': education_index,
+        'health_index': health_index,
+        'employment_rate': employment_rate,
+        'safety_index': safety_index
     }
     
-    df_quartiers = pd.DataFrame(quartiers_data)
+    st.session_state.city_data = city_data
     
-    # Tableau interactif
-    st.dataframe(df_quartiers, use_container_width=True)
-    
-    # Graphique de corrélation
-    fig_scatter = px.scatter(
-        df_quartiers,
-        x='Accès Eau (%)',
-        y='Accès Électricité (%)',
-        size='Population',
-        hover_name='Quartier',
-        title="Corrélation Accès Eau vs Électricité par Quartier"
-    )
-    
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    if st.button("🚀 Lancer l'Analyse", type="primary", use_container_width=True):
+        st.success("✅ Données enregistrées ! Consultez l'onglet 'Analyse' pour voir les résultats.")
 
 def analysis_tab():
-    """Onglet Analyse avec outils d'analyse avancés"""
-    st.markdown('<div class="main-header">🔍 ANALYSE AVANCÉE</div>', unsafe_allow_html=True)
+    """Onglet d'analyse et résultats"""
+    st.markdown('<div class="main-header">📈 ANALYSE SMART CITY</div>', unsafe_allow_html=True)
+    
+    if 'city_data' not in st.session_state:
+        st.warning("⚠️ Veuillez d'abord saisir les données dans l'onglet 'Données'")
+        return
+    
+    city_data = st.session_state.city_data
+    
+    # Calcul des scores
+    total_score, scores = calculate_smart_city_score(city_data)
+    
+    # Affichage du score global
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        score_color = "#28a745" if total_score >= 70 else "#ffc107" if total_score >= 50 else "#dc3545"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, {score_color}20, {score_color}10); border-radius: 15px; margin: 1rem 0;">
+            <h1 style="color: {score_color}; margin: 0; font-size: 3rem;">{total_score:.1f}/100</h1>
+            <h3 style="color: #333; margin: 0.5rem 0;">Score Smart City Global</h3>
+            <p style="color: #666; margin: 0;">{city_data['city_name']}, {city_data['country']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Métriques détaillées
+    st.subheader("📊 Scores par Domaine")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    metrics = [
+        ("Infrastructure", scores['infrastructure'], "🏗️"),
+        ("Gouvernance", scores['governance'], "🏛️"),
+        ("Environnement", scores['environment'], "🌱"),
+        ("Économie", scores['economy'], "💼"),
+        ("Social", scores['social'], "👥")
+    ]
+    
+    for i, (col, (name, score, icon)) in enumerate(zip([col1, col2, col3, col4, col5], metrics)):
+        with col:
+            color = "#28a745" if score >= 70 else "#ffc107" if score >= 50 else "#dc3545"
+            st.markdown(f"""
+            <div class="metric-card" style="background: linear-gradient(135deg, {color}, {color}dd);">
+                <div style="font-size: 2rem;">{icon}</div>
+                <div class="metric-value">{score:.1f}</div>
+                <div class="metric-label">{name}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Graphiques
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🎯 Profil Smart City")
+        radar_chart = create_radar_chart(scores)
+        st.plotly_chart(radar_chart, use_container_width=True)
+    
+    with col2:
+        st.subheader("🌍 Comparaison Internationale")
+        benchmarks = {
+            'Singapour': 87.2,
+            'Barcelone': 82.5,
+            'Amsterdam': 80.1,
+            'Casablanca': 58.3,
+            'Le Caire': 52.7,
+            'Lagos': 45.2
+        }
+        comparison_chart = create_comparison_chart(total_score, benchmarks)
+        st.plotly_chart(comparison_chart, use_container_width=True)
+    
+    # Analyse détaillée avec IA
+    st.markdown("---")
+    st.subheader("🤖 Analyse IA Approfondie")
+    
+    if st.button("🚀 Générer l'Analyse IA", type="primary"):
+        with st.spinner("Analyse en cours..."):
+            clients = initialize_ai_clients()
+            
+            analysis_prompt = f"""
+            Analysez ce diagnostic Smart City pour {city_data['city_name']}, {city_data['country']}:
+            
+            Score global: {total_score:.1f}/100
+            - Infrastructure: {scores['infrastructure']:.1f}/100
+            - Gouvernance: {scores['governance']:.1f}/100  
+            - Environnement: {scores['environment']:.1f}/100
+            - Économie: {scores['economy']:.1f}/100
+            - Social: {scores['social']:.1f}/100
+            
+            Population: {city_data['population']:,} habitants
+            PIB/hab: {city_data['gdp_per_capita']} USD
+            
+            Fournissez une analyse concise (max 300 mots) avec:
+            1. Points forts principaux
+            2. Défis majeurs  
+            3. 3 recommandations prioritaires
+            4. Potentiel de développement
+            """
+            
+            analysis = generate_enhanced_content(analysis_prompt, clients, 400)
+            
+            st.markdown('<div class="info-box">', unsafe_allow_html=True)
+            st.markdown("### 🎯 Analyse Experte")
+            st.markdown(analysis)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+def recommendations_tab():
+    """Onglet des recommandations"""
+    st.markdown('<div class="main-header">💡 RECOMMANDATIONS</div>', unsafe_allow_html=True)
+    
+    if 'city_data' not in st.session_state:
+        st.warning("⚠️ Veuillez d'abord effectuer l'analyse dans les onglets précédents")
+        return
+    
+    city_data = st.session_state.city_data
+    total_score, scores = calculate_smart_city_score(city_data)
+    recommendations = generate_recommendations(scores, city_data)
+    
+    # Plan d'action stratégique
+    st.subheader("🎯 Plan d'Action Stratégique")
+    
+    # Recommandations par priorité
+    high_priority = [r for r in recommendations if r['priority'] == 'Haute']
+    medium_priority = [r for r in recommendations if r['priority'] == 'Moyenne']
+    
+    if high_priority:
+        st.markdown("### 🔴 Priorité Haute")
+        for i, rec in enumerate(high_priority, 1):
+            st.markdown(f"""
+            <div class="warning-box">
+                <strong>{i}. {rec['action']}</strong><br>
+                <em>Domaine:</em> {rec['domain']}<br>
+                <em>Impact:</em> {rec['impact']}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    if medium_priority:
+        st.markdown("### 🟡 Priorité Moyenne")
+        for i, rec in enumerate(medium_priority, 1):
+            st.markdown(f"""
+            <div class="recommendation-box">
+                <strong>{i}. {rec['action']}</strong><br>
+                <em>Domaine:</em> {rec['domain']}<br>
+                <em>Impact:</em> {rec['impact']}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Recommandations IA personnalisées
+    st.markdown("---")
+    st.subheader("🤖 Recommandations IA Personnalisées")
+    
+    if st.button("🚀 Générer Recommandations Détaillées", type="primary"):
+        with st.spinner("Génération des recommandations..."):
+            clients = initialize_ai_clients()
+            
+            rec_prompt = f"""
+            Générez des recommandations détaillées pour améliorer le score Smart City de {city_data['city_name']}, {city_data['country']}.
+            
+            Situation actuelle:
+            - Score global: {total_score:.1f}/100
+            - Points faibles: {[k for k, v in scores.items() if v < 60]}
+            - Population: {city_data['population']:,}
+            - Contexte: Ville africaine en développement
+            
+            Fournissez:
+            1. 5 actions concrètes et réalisables
+            2. Estimation des coûts (faible/moyen/élevé)
+            3. Délais de mise en œuvre
+            4. Partenaires potentiels
+            5. Indicateurs de suivi
+            
+            Format: Actions numérotées, concises et pratiques.
+            """
+            
+            detailed_recs = generate_enhanced_content(rec_prompt, clients, 600)
+            
+            st.markdown('<div class="info-box">', unsafe_allow_html=True)
+            st.markdown("### 📋 Plan d'Action Détaillé")
+            st.markdown(detailed_recs)
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Simulation d'impact
+    st.markdown("---")
+    st.subheader("📊 Simulation d'Impact")
+    
+    st.markdown("Estimez l'impact potentiel des améliorations:")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Améliorations Infrastructure:**")
+        infra_improvement = st.slider("Amélioration Infrastructure (%)", 0, 50, 20)
+        
+        st.markdown("**Améliorations Gouvernance:**")
+        gov_improvement = st.slider("Amélioration Gouvernance (%)", 0, 50, 15)
+    
+    with col2:
+        st.markdown("**Améliorations Environnement:**")
+        env_improvement = st.slider("Amélioration Environnement (%)", 0, 50, 25)
+        
+        st.markdown("**Améliorations Social:**")
+        social_improvement = st.slider("Amélioration Social (%)", 0, 50, 20)
+    
+    # Calcul du nouveau score
+    new_scores = scores.copy()
+    new_scores['infrastructure'] = min(100, scores['infrastructure'] + infra_improvement)
+    new_scores['governance'] = min(100, scores['governance'] + gov_improvement)
+    new_scores['environment'] = min(100, scores['environment'] + env_improvement)
+    new_scores['social'] = min(100, scores['social'] + social_improvement)
+    
+    weights = {'infrastructure': 0.25, 'governance': 0.20, 'environment': 0.20, 'economy': 0.15, 'social': 0.20}
+    new_total_score = sum(new_scores[key] * weights[key] for key in weights.keys())
+    
+    improvement = new_total_score - total_score
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Score Actuel", f"{total_score:.1f}", "")
+    with col2:
+        st.metric("Score Projeté", f"{new_total_score:.1f}", f"+{improvement:.1f}")
+    with col3:
+        improvement_pct = (improvement / total_score) * 100
+        st.metric("Amélioration", f"{improvement_pct:.1f}%", "")
+
+def report_tab():
+    """Onglet de génération de rapport"""
+    st.markdown('<div class="main-header">📄 RAPPORT FINAL</div>', unsafe_allow_html=True)
+    
+    if 'city_data' not in st.session_state:
+        st.warning("⚠️ Veuillez d'abord effectuer l'analyse complète")
+        return
+    
+    city_data = st.session_state.city_data
+    total_score, scores = calculate_smart_city_score(city_data)
+    recommendations = generate_recommendations(scores, city_data)
+    
+    # Aperçu du rapport
+    st.subheader("📋 Aperçu du Rapport")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown(f"""
+        **Ville:** {city_data['city_name']}, {city_data['country']}  
+        **Population:** {city_data['population']:,} habitants  
+        **Score Smart City:** {total_score:.1f}/100  
+        **Date d'analyse:** {datetime.now().strftime('%d/%m/%Y')}
+        
+        **Contenu du rapport:**
+        - ✅ Résumé exécutif
+        - ✅ Scores détaillés par domaine  
+        - ✅ Analyse comparative internationale
+        - ✅ Recommandations prioritaires
+        - ✅ Plan d'action stratégique
+        - ✅ Indicateurs de suivi
+        """)
+    
+    with col2:
+        # Génération du PDF
+        if st.button("📥 Télécharger PDF", type="primary", use_container_width=True):
+            with st.spinner("Génération du rapport PDF..."):
+                pdf_buffer = create_pdf_report(
+                    city_data['city_name'], 
+                    total_score, 
+                    scores, 
+                    recommendations,
+                    {}
+                )
+                
+                st.download_button(
+                    label="💾 Télécharger le Rapport PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name=f"Smart_City_Report_{city_data['city_name']}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+        
+        # Export des données
+        if st.button("📊 Exporter Données", use_container_width=True):
+            export_data = {
+                'ville': city_data['city_name'],
+                'pays': city_data['country'],
+                'score_global': total_score,
+                **scores,
+                'date_analyse': datetime.now().isoformat()
+            }
+            
+            df = pd.DataFrame([export_data])
+            csv = df.to_csv(index=False)
+            
+            st.download_button(
+                label="💾 Télécharger CSV",
+                data=csv,
+                file_name=f"smart_city_data_{city_data['city_name']}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+    
+    # Rapport détaillé avec IA
+    st.markdown("---")
+    st.subheader("🤖 Rapport Exécutif IA")
+    
+    if st.button("📝 Générer Rapport Exécutif", type="primary"):
+        with st.spinner("Rédaction du rapport exécutif..."):
+            clients = initialize_ai_clients()
+            
+            executive_prompt = f"""
+            Rédigez un rapport exécutif professionnel pour le diagnostic Smart City de {city_data['city_name']}, {city_data['country']}.
+            
+            DONNÉES CLÉS:
+            - Score global: {total_score:.1f}/100
+            - Infrastructure: {scores['infrastructure']:.1f}/100
+            - Gouvernance: {scores['governance']:.1f}/100
+            - Environnement: {scores['environment']:.1f}/100
+            - Économie: {scores['economy']:.1f}/100
+            - Social: {scores['social']:.1f}/100
+            - Population: {city_data['population']:,} habitants
+            
+            STRUCTURE REQUISE:
+            1. RÉSUMÉ EXÉCUTIF (2-3 phrases)
+            2. SITUATION ACTUELLE (forces/faiblesses)
+            3. ENJEUX PRIORITAIRES (3 points max)
+            4. RECOMMANDATIONS STRATÉGIQUES (3 actions)
+            5. IMPACT ATTENDU
+            
+            Style: Professionnel, concis, orienté décision. Max 400 mots.
+            """
+            
+            executive_report = generate_enhanced_content(executive_prompt, clients, 500)
+            
+            st.markdown('<div class="info-box">', unsafe_allow_html=True)
+            st.markdown("### 📊 Rapport Exécutif")
+            st.markdown(executive_report)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Sauvegarder le rapport
+            st.session_state.executive_report = executive_report
+
+def chatbot_tab():
+    """Onglet Chatbot pour assistance IA"""
+    st.markdown('<div class="main-header">🤖 ASSISTANT IA URBAIN</div>', unsafe_allow_html=True)
     
     # Initialisation des clients IA
     clients = initialize_ai_clients()
     
-    # Sélection du type d'analyse
-    analysis_type = st.selectbox(
-        "Type d'analyse",
-        ["Analyse comparative", "Analyse prédictive", "Analyse de scénarios", "Analyse de risques", "Analyse économique"]
-    )
+    # Interface du chatbot
+    st.markdown("""
+    ### 💬 Posez vos questions sur le développement urbain
     
-    if analysis_type == "Analyse comparative":
-        st.subheader("📊 Analyse Comparative Régionale")
-        
-        # Données comparatives
-        cities_data = {
-            'Ville': ['Nouakchott', 'Dakar', 'Bamako', 'Niamey', 'Ouagadougou'],
-            'Population (M)': [1.2, 3.1, 2.4, 1.3, 2.2],
-            'PIB/hab (USD)': [1850, 2400, 900, 650, 750],
-            'Accès Eau (%)': [45, 85, 65, 55, 70],
-            'Accès Électricité (%)': [42, 90, 70, 60, 75],
-            'Taux Chômage (%)': [23, 18, 28, 25, 22]
-        }
-        
-        df_cities = pd.DataFrame(cities_data)
-        
-        # Graphique radar comparatif
-        fig_radar_comp = go.Figure()
-        
-        categories = ['PIB/hab', 'Accès Eau', 'Accès Électricité', 'Emploi']
-        
-        for city in ['Nouakchott', 'Dakar', 'Bamako']:
-            city_data = df_cities[df_cities['Ville'] == city].iloc[0]
-            values = [
-                city_data['PIB/hab (USD)']/30,  # Normalisé
-                city_data['Accès Eau (%)'],
-                city_data['Accès Électricité (%)'],
-                100 - city_data['Taux Chômage (%)']  # Inversé pour que plus haut = mieux
-            ]
-            
-            fig_radar_comp.add_trace(go.Scatterpolar(
-                r=values,
-                theta=categories,
-                fill='toself',
-                name=city
-            ))
-        
-        fig_radar_comp.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-            showlegend=True,
-            title="Comparaison Régionale - Indicateurs Clés"
-        )
-        
-        st.plotly_chart(fig_radar_comp, use_container_width=True)
-        
-        # Analyse comparative générée par IA
-        comparative_prompt = f"""
-        Analysez la position de Nouakchott par rapport aux autres capitales sahéliennes:
-        - Nouakchott: 1.2M hab, 1850 USD/hab, 45% eau, 42% électricité, 23% chômage
-        - Dakar: 3.1M hab, 2400 USD/hab, 85% eau, 90% électricité, 18% chômage
-        - Bamako: 2.4M hab, 900 USD/hab, 65% eau, 70% électricité, 28% chômage
-        - Niamey: 1.3M hab, 650 USD/hab, 55% eau, 60% électricité, 25% chômage
-        - Ouagadougou: 2.2M hab, 750 USD/hab, 70% eau, 75% électricité, 22% chômage
-        
-        Identifiez: forces, faiblesses, opportunités d'apprentissage, bonnes pratiques à adopter.
-        400 mots, analyse factuelle et recommandations.
-        """
-        
-        comparative_analysis = generate_enhanced_content(comparative_prompt, clients, 600)
-        st.markdown(f'<div class="professional-text">{comparative_analysis}</div>', unsafe_allow_html=True)
+    Cet assistant IA peut vous aider avec :
+    - **Analyse de données urbaines** 📊
+    - **Recommandations de politiques** 🏛️
+    - **Comparaisons entre villes** 🌍
+    - **Interprétation d'indicateurs** 📈
+    - **Stratégies de développement** 🚀
+    """)
     
-    elif analysis_type == "Analyse prédictive":
-        st.subheader("🔮 Projections et Tendances")
-        
-        # Paramètres de projection
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            projection_years = st.slider("Horizon de projection (années)", 5, 20, 10)
-            growth_scenario = st.selectbox("Scénario de croissance", ["Conservateur", "Modéré", "Optimiste"])
-        
-        with col2:
-            investment_level = st.selectbox("Niveau d'investissement", ["Faible", "Moyen", "Élevé"])
-            policy_effectiveness = st.slider("Efficacité des politiques (%)", 0, 100, 70)
-        
-        # Calculs prédictifs
-        current_pop = 1200000
-        base_growth = 3.5
-        
-        if growth_scenario == "Conservateur":
-            growth_rate = base_growth * 0.8
-        elif growth_scenario == "Optimiste":
-            growth_rate = base_growth * 1.2
-        else:
-            growth_rate = base_growth
-        
-        # Projection démographique
-        years_proj = list(range(2024, 2024 + projection_years + 1))
-        pop_projection = [current_pop * (1 + growth_rate/100)**i for i in range(len(years_proj))]
-        
-        fig_proj = px.line(
-            x=years_proj,
-            y=pop_projection,
-            title=f"Projection Démographique - Scénario {growth_scenario}",
-            labels={'x': 'Année', 'y': 'Population'}
-        )
-        
-        st.plotly_chart(fig_proj, use_container_width=True)
-        
-        # Analyse prédictive par IA
-        predictive_prompt = f"""
-        Analysez les projections pour Nouakchott sur {projection_years} ans:
-        - Scénario: {growth_scenario}
-        - Population projetée: {pop_projection[-1]:,.0f} habitants en {years_proj[-1]}
-        - Niveau d'investissement: {investment_level}
-        - Efficacité des politiques: {policy_effectiveness}%
-        
-        Évaluez: besoins futurs en infrastructures, défis de planification, opportunités de développement, risques potentiels.
-        350 mots, analyse prospective détaillée.
-        """
-        
-        predictive_analysis = generate_enhanced_content(predictive_prompt, clients, 600)
-        st.markdown(f'<div class="professional-text">{predictive_analysis}</div>', unsafe_allow_html=True)
-    
-    elif analysis_type == "Analyse de scénarios":
-        st.subheader("🎭 Modélisation de Scénarios")
-        
-        # Définition des scénarios
-        scenarios = {
-            "Statu Quo": {
-                "description": "Maintien des tendances actuelles",
-                "water_2030": 55,
-                "electricity_2030": 52,
-                "unemployment_2030": 22,
-                "gdp_growth": 2.5
-            },
-            "Réformes Modérées": {
-                "description": "Mise en œuvre de réformes graduelles",
-                "water_2030": 70,
-                "electricity_2030": 68,
-                "unemployment_2030": 18,
-                "gdp_growth": 4.0
-            },
-            "Transformation Accélérée": {
-                "description": "Investissements massifs et réformes profondes",
-                "water_2030": 85,
-                "electricity_2030": 80,
-                "unemployment_2030": 12,
-                "gdp_growth": 6.5
+    # Historique des conversations
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {
+                "role": "assistant", 
+                "content": "Bonjour ! Je suis votre assistant IA spécialisé en développement urbain. Comment puis-je vous aider aujourd'hui ?"
             }
-        }
-        
-        # Visualisation des scénarios
-        scenario_names = list(scenarios.keys())
-        water_values = [scenarios[s]["water_2030"] for s in scenario_names]
-        electricity_values = [scenarios[s]["electricity_2030"] for s in scenario_names]
-        unemployment_values = [100 - scenarios[s]["unemployment_2030"] for s in scenario_names]  # Inversé
-        
-        fig_scenarios = go.Figure()
-        
-        fig_scenarios.add_trace(go.Bar(name='Accès Eau 2030', x=scenario_names, y=water_values))
-        fig_scenarios.add_trace(go.Bar(name='Accès Électricité 2030', x=scenario_names, y=electricity_values))
-        fig_scenarios.add_trace(go.Bar(name='Taux Emploi 2030', x=scenario_names, y=unemployment_values))
-        
-        fig_scenarios.update_layout(
-            title="Comparaison des Scénarios - Indicateurs 2030",
-            barmode='group',
-            yaxis_title="Pourcentage (%)"
-        )
-        
-        st.plotly_chart(fig_scenarios, use_container_width=True)
-        
-        # Sélection d'un scénario pour analyse détaillée
-        selected_scenario = st.selectbox("Sélectionner un scénario pour analyse détaillée", scenario_names)
-        
-        scenario_data = scenarios[selected_scenario]
-        
-        scenario_prompt = f"""
-        Analysez en détail le scénario "{selected_scenario}" pour Nouakchott:
-        - Description: {scenario_data['description']}
-        - Accès eau 2030: {scenario_data['water_2030']}%
-        - Accès électricité 2030: {scenario_data['electricity_2030']}%
-        - Taux de chômage 2030: {scenario_data['unemployment_2030']}%
-        - Croissance PIB: {scenario_data['gdp_growth']}%
-        
-        Détaillez: conditions de réalisation, investissements requis, risques, bénéfices attendus, faisabilité.
-        400 mots, analyse critique et réaliste.
-        """
-        
-        scenario_analysis = generate_enhanced_content(scenario_prompt, clients, 700)
-        st.markdown(f'<div class="professional-text">{scenario_analysis}</div>', unsafe_allow_html=True)
+        ]
     
-    elif analysis_type == "Analyse de risques":
-        st.subheader("⚠️ Évaluation des Risques Urbains")
-        
-        # Matrice des risques
-        risks_data = {
-            'Risque': ['Inondations', 'Sécheresse', 'Croissance démographique', 'Chômage des jeunes', 'Dégradation environnementale'],
-            'Probabilité': [0.8, 0.9, 0.95, 0.85, 0.7],
-            'Impact': [0.9, 0.7, 0.8, 0.75, 0.6],
-            'Niveau': ['Très Élevé', 'Élevé', 'Très Élevé', 'Élevé', 'Moyen']
-        }
-        
-        df_risks = pd.DataFrame(risks_data)
-        df_risks['Score'] = df_risks['Probabilité'] * df_risks['Impact']
-        
-        # Graphique de risques
-        fig_risk = px.scatter(
-            df_risks,
-            x='Probabilité',
-            y='Impact',
-            size='Score',
-            hover_name='Risque',
-            title="Matrice des Risques - Probabilité vs Impact",
-            color='Score',
-            color_continuous_scale='Reds'
-        )
-        
-        st.plotly_chart(fig_risk, use_container_width=True)
-        
-        # Tableau des risques
-        st.dataframe(df_risks, use_container_width=True)
-        
-        # Analyse des risques par IA
-        risk_prompt = f"""
-        Analysez les risques majeurs identifiés pour Nouakchott:
-        - Inondations: Probabilité 80%, Impact 90%
-        - Sécheresse: Probabilité 90%, Impact 70%
-        - Croissance démographique: Probabilité 95%, Impact 80%
-        - Chômage des jeunes: Probabilité 85%, Impact 75%
-        - Dégradation environnementale: Probabilité 70%, Impact 60%
-        
-        Pour chaque risque: causes, conséquences, mesures de prévention, stratégies d'atténuation.
-        450 mots, approche méthodique et préventive.
-        """
-        
-        risk_analysis = generate_enhanced_content(risk_prompt, clients, 800)
-        st.markdown(f'<div class="professional-text">{risk_analysis}</div>', unsafe_allow_html=True)
+    # Affichage des messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
     
-    elif analysis_type == "Analyse économique":
-        st.subheader("💰 Analyse Économique Approfondie")
+    # Zone de saisie
+    if prompt := st.chat_input("Tapez votre question ici..."):
+        # Ajout du message utilisateur
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
         
-        # Indicateurs économiques
-        col1, col2, col3 = st.columns(3)
+        # Génération de la réponse
+        with st.chat_message("assistant"):
+            with st.spinner("Réflexion en cours..."):
+                
+                # Contexte spécialisé pour l'urbanisme
+                system_prompt = """
+                Vous êtes un expert en développement urbain et planification urbaine, spécialisé dans les villes africaines.
+                Vous aidez les urbanistes, décideurs et chercheurs avec des analyses précises et des recommandations pratiques.
+                
+                RÈGLES IMPORTANTES:
+                - Répondez UNIQUEMENT aux questions liées à l'urbanisme et au développement urbain
+                - Si vous ne connaissez pas une information précise, dites "Je ne connais pas cette information spécifique"
+                - Si vous trouvez des informations sur le web, indiquez clairement la source
+                - Gardez vos réponses courtes et précises (max 150 mots)
+                - Concentrez-vous sur les villes africaines quand c'est pertinent
+                
+                Vos domaines d'expertise incluent :
+                - Planification urbaine et aménagement du territoire
+                - Infrastructures urbaines (eau, électricité, transport, assainissement)
+                - Habitat et logement social
+                - Économie urbaine et développement local
+                - Gouvernance urbaine et participation citoyenne
+                - Résilience climatique et développement durable
+                - Démographie urbaine et migration
+                - Services urbains de base
+                """
+                
+                # Vérifier si la question est liée à l'urbanisme
+                urban_keywords = ['ville', 'urbain', 'infrastructure', 'transport', 'logement', 'eau', 'électricité', 
+                                'gouvernance', 'planification', 'développement', 'population', 'habitat', 'assainissement',
+                                'smart city', 'municipalité', 'maire', 'conseil', 'citoyen', 'service public']
+                
+                is_urban_related = any(keyword in prompt.lower() for keyword in urban_keywords)
+                
+                if not is_urban_related:
+                    response = "Je suis spécialisé uniquement dans les questions de développement urbain et de planification urbaine. Pouvez-vous reformuler votre question en lien avec ces domaines ?"
+                else:
+                    # Recherche web si nécessaire
+                    needs_Web Search = any(word in prompt.lower() for word in ['récent', 'dernier', 'nouveau', 'actuel', '2024', '2025'])
+                    
+                    full_prompt = f"""
+                    {system_prompt}
+                    
+                    Question de l'utilisateur : {prompt}
+                    
+                    Contexte : Nous travaillons sur un diagnostic urbain pour des villes africaines, notamment Nouakchott en Mauritanie.
+                    
+                    Répondez de manière concise et pratique. Si vous ne connaissez pas une information précise, dites-le clairement.
+                    """
+                    
+                    response = generate_enhanced_content(full_prompt, clients, 200, include_Web Search=needs_Web Search)
+                
+                st.markdown(response)
+                
+                # Ajout de la réponse à l'historique
+                st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # Suggestions de questions
+    st.markdown("---")
+    st.markdown("### 💡 Questions suggérées")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🏠 Comment améliorer l'accès au logement décent ?"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Comment améliorer l'accès au logement décent ?"
+            })
+            st.rerun()
         
-        with col1:
-            st.metric("PIB urbain", "2.2 Mrd USD", "4.2%")
-            st.metric("PIB par habitant", "1,850 USD", "0.7%")
+        if st.button("💧 Stratégies pour l'accès à l'eau potable"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Quelles sont les meilleures stratégies pour améliorer l'accès à l'eau potable en milieu urbain africain ?"
+            })
+            st.rerun()
         
-        with col2:
-            st.metric("Taux d'investissement", "18%", "2.1%")
-            st.metric("Balance commerciale", "-450M USD", "-12%")
+        if st.button("🚌 Développer le transport public"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Comment développer un système de transport public efficace dans une ville en croissance rapide ?"
+            })
+            st.rerun()
+    
+    with col2:
+        if st.button("📊 Interpréter les indicateurs urbains"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Comment interpréter et utiliser les indicateurs urbains pour la prise de décision ?"
+            })
+            st.rerun()
         
-        with col3:
-            st.metric("Recettes fiscales", "180M USD", "8.5%")
-            st.metric("Dette municipale", "95M USD", "15%")
+        if st.button("🌱 Résilience climatique urbaine"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Quelles mesures prendre pour renforcer la résilience climatique d'une ville sahélienne ?"
+            })
+            st.rerun()
         
-        # Répartition sectorielle
-        sectors_data = {
-            'Secteur': ['Services', 'Commerce', 'Pêche', 'Industrie', 'Agriculture', 'BTP'],
-            'Contribution PIB (%)': [35, 25, 15, 12, 8, 5],
-            'Emplois (milliers)': [180, 150, 80, 45, 35, 25]
-        }
-        
-        df_sectors = pd.DataFrame(sectors_data)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            fig_pib = px.pie(
-                df_sectors,
-                values='Contribution PIB (%)',
-                names='Secteur',
-                title="Contribution au PIB par Secteur"
-            )
-            st.plotly_chart(fig_pib, use_container_width=True)
-        
-        with col2:
-            fig_emploi = px.bar(
-                df_sectors,
-                x='Secteur',
-                y='Emplois (milliers)',
-                title="Répartition de l'Emploi par Secteur"
-            )
-            st.plotly_chart(fig_emploi, use_container_width=True)
-        
-        # Analyse économique par IA
-        economic_prompt = f"""
-        Analysez la situation économique de Nouakchott:
-        - PIB urbain: 2.2 Mrd USD, croissance 4.2%
-        - PIB/habitant: 1,850 USD
-        - Secteurs dominants: Services (35%), Commerce (25%), Pêche (15%)
-        - Taux d'investissement: 18%
-        - Chômage: 23%, économie informelle: 70%
-        - Balance commerciale: -450M USD
-        
-        Évaluez: dynamiques économiques, potentiel de croissance, défis structurels, opportunités de diversification.
-        400 mots, analyse économique rigoureuse.
-        """
-        
-        economic_analysis = generate_enhanced_content(economic_prompt, clients, 700)
-        st.markdown(f'<div class="professional-text">{economic_analysis}</div>', unsafe_allow_html=True)
+        if st.button("💼 Créer des emplois urbains"):
+            st.session_state.messages.append({
+                "role": "user", 
+                "content": "Quelles stratégies pour créer des emplois durables en milieu urbain africain ?"
+            })
+            st.rerun()
+    
+    # Bouton pour effacer l'historique
+    if st.button("🗑️ Effacer la conversation", type="secondary"):
+        st.session_state.messages = [
+            {
+                "role": "assistant", 
+                "content": "Bonjour ! Je suis votre assistant IA spécialisé en développement urbain. Comment puis-je vous aider aujourd'hui ?"
+            }
+        ]
+        st.rerun()
 
 def main():
     """Fonction principale de l'application"""
-    create_header()
+    
+    # Sidebar avec informations
+    with st.sidebar:
+        st.markdown("### 🏙️ Smart City QuickScan")
+        st.markdown("---")
+        st.markdown("""
+        **Outil de diagnostic urbain intelligent**
+        
+        📊 **Fonctionnalités:**
+        - Évaluation multi-critères
+        - Benchmarking international  
+        - Recommandations IA
+        - Rapports personnalisés
+        - Assistant IA urbain
+        
+        🎯 **Objectif:**
+        Évaluer le potentiel Smart City des villes africaines en 5 minutes
+        """)
+        
+        st.markdown("---")
+        st.markdown("**Développé par:** African Cities Lab")
+        st.markdown("**Version:** 2.0")
     
     # Navigation par onglets
-    tab1, tab2, tab3 = st.tabs(["🏙️ Diagnostic", "📊 Dashboard", "🔍 Analyse"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📊 Données", 
+        "📈 Analyse", 
+        "💡 Recommandations", 
+        "📄 Rapport",
+        "🤖 Chatbot"
+    ])
     
     with tab1:
-        diagnostic_tab()
+        data_input_tab()
     
     with tab2:
-        dashboard_tab()
-    
-    with tab3:
         analysis_tab()
     
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="text-align: center; color: #666; padding: 20px;">
-        <p><strong>AfricanCities IA Services</strong> - Plateforme de diagnostic urbain intelligent</p>
-        <p>Développé par le Centre of Urban Systems - UM6P | Version 2.1 avec recherche web automatique</p>
-        <p>🌐 Enrichi par des données web en temps réel | 📄 Analyse de documents techniques | 🤖 IA avancée</p>
-    </div>
-    """, unsafe_allow_html=True)
+    with tab3:
+        recommendations_tab()
+    
+    with tab4:
+        report_tab()
+        
+    with tab5:
+        chatbot_tab()
 
 if __name__ == "__main__":
     main()
