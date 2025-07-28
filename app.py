@@ -710,7 +710,7 @@ def chatbot_tab():
                     response = "Je suis spécialisé uniquement dans les questions de développement urbain et de planification urbaine. Pouvez-vous reformuler votre question en lien avec ces domaines ?"
                 else:
                     # Recherche web si nécessaire
-                    needs_Web Search = any(word in prompt.lower() for word in ['récent', 'dernier', 'nouveau', 'actuel', '2024', '2025'])
+                    needs_Web_Search = any(word in prompt.lower() for word in ['récent', 'dernier', 'nouveau', 'actuel', '2024', '2025'])
                     
                     full_prompt = f"""
                     {system_prompt}
@@ -722,7 +722,7 @@ def chatbot_tab():
                     Répondez de manière concise et pratique. Si vous ne connaissez pas une information précise, dites-le clairement.
                     """
                     
-                    response = generate_enhanced_content_with_docs_and_web(full_prompt, clients, None, None, 200, include_Web_Search=needs_Web Search)
+                    response = generate_enhanced_content_with_docs_and_web(full_prompt, clients, None, None, 200, include_Web_Search=needs_Web_Search)
                 
                 st.markdown(response)
                 
