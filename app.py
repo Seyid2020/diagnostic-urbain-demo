@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -22,6 +23,7 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 import base64
+import wikipedia
 
 # Configuration de la page
 st.set_page_config(
@@ -149,6 +151,15 @@ st.markdown("""
         padding-left: 20px;
         padding-right: 20px;
     }
+    
+    .web-info-box {
+        background-color: #e8f4fd;
+        border: 1px solid #bee5eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-left: 4px solid #17a2b8;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -179,6 +190,100 @@ def initialize_ai_clients():
         clients['groq'] = Groq(api_key=st.secrets["GROQ_API_KEY"])
     
     return clients
+
+def get_wikipedia_info(city_name, country_name, lang="fr"):
+    """Récupère des informations sur la ville depuis Wikipedia"""
+    try:
+        wikipedia.set_lang(lang)
+        
+        # Essayer différentes variantes du nom de la ville
+        search_terms = [
+            f"{city_name}",
+            f"{city_name} {country_name}",
+            f"{city_name}, {country_name}"
+        ]
+        
+        for term in search_terms:
+            try:
+                # Rechercher la page
+                page_title = wikipedia.search(term, results=1)
+                if page_title:
+                    page = wikipedia.page(page_title[0])
+                    summary = wikipedia.summary(term, sentences=5)
+                    
+                    return {
+                        'title': page.title,
+                        'summary': summary,
+                        'url': page.url,
+                        'found': True
+                    }
+            except wikipedia.exceptions.DisambiguationError as e:
+                # Prendre la première option en cas d'ambiguïté
+                try:
+                    page = wikipedia.page(e.options[0])
+                    summary = wikipedia.summary(e.options[0], sentences=5)
+                    return {
+                        'title': page.title,
+                        'summary': summary,
+                        'url': page.url,
+                        'found': True
+                    }
+                except:
+                    continue
+            except:
+                continue
+        
+        # Si aucune information trouvée en français, essayer en anglais
+        if lang == "fr":
+            return get_wikipedia_info(city_name, country_name, lang="en")
+        
+        return {
+            'title': f"{city_name}",
+            'summary': f"Aucune information Wikipedia trouvée pour {city_name}, {country_name}.",
+            'url': None,
+            'found': False
+        }
+        
+    except Exception as e:
+        return {
+            'title': f"{city_name}",
+            'summary': f"Erreur lors de la recherche d'informations sur {city_name}: {str(e)}",
+            'url': None,
+            'found': False
+        }
+
+def get_web_urban_data(city_name, country_name):
+    """Collecte des données urbaines depuis différentes sources web"""
+    web_data = {
+        'wikipedia_info': get_wikipedia_info(city_name, country_name),
+        'additional_context': f"Recherche web effectuée pour {city_name}, {country_name}"
+    }
+    
+    # Ici, tu peux ajouter d'autres sources de données web
+    # Par exemple : World Bank API, UN Data, etc.
+    
+    return web_data
+
+def format_web_info_for_prompt(web_data):
+    """Formate les informations web pour inclusion dans le prompt"""
+    if not web_data:
+        return ""
+    
+    formatted_info = "\n\n=== INFORMATIONS WEB COLLECTÉES ===\n"
+    
+    # Informations Wikipedia
+    wiki_info = web_data.get('wikipedia_info', {})
+    if wiki_info.get('found', False):
+        formatted_info += f"\n--- Wikipedia: {wiki_info.get('title', 'N/A')} ---\n"
+        formatted_info += wiki_info.get('summary', 'Aucun résumé disponible')
+        if wiki_info.get('url'):
+            formatted_info += f"\nSource: {wiki_info.get('url')}"
+    else:
+        formatted_info += f"\n--- Wikipedia ---\n{wiki_info.get('summary', 'Aucune information trouvée')}"
+    
+    formatted_info += "\n\n=== FIN DES INFORMATIONS WEB ===\n"
+    
+    return formatted_info
 
 def extract_text_from_pdf(pdf_file):
     """Extrait le texte d'un fichier PDF avec OCR si nécessaire"""
@@ -222,12 +327,18 @@ def process_uploaded_documents(uploaded_files):
     
     return documents_content
 
-def generate_enhanced_content_with_docs(prompt, clients, documents_content=None, max_tokens=800):
-    """Génère du contenu enrichi en incluant les documents uploadés"""
+def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_content=None, web_data=None, max_tokens=800):
+    """Génère du contenu enrichi en incluant les documents uploadés ET les données web"""
     try:
-        # Construire le prompt avec les documents si disponibles
+        # Construire le prompt avec les documents et les données web
         enhanced_prompt = prompt
         
+        # Ajouter les informations web
+        if web_data:
+            web_info = format_web_info_for_prompt(web_data)
+            enhanced_prompt = prompt + web_info
+        
+        # Ajouter les documents si disponibles
         if documents_content and len(documents_content) > 0:
             docs_text = "\n\nDOCUMENTS TECHNIQUES FOURNIS :\n"
             for i, doc in enumerate(documents_content, 1):
@@ -235,14 +346,16 @@ def generate_enhanced_content_with_docs(prompt, clients, documents_content=None,
                 docs_text += doc['content'][:2000]  # Limiter chaque document à 2000 caractères
                 docs_text += "\n"
             
-            enhanced_prompt = prompt + docs_text + "\n\nVeuillez intégrer les informations de ces documents techniques dans votre analyse."
+            enhanced_prompt += docs_text + "\n\nVeuillez intégrer les informations de ces documents techniques ET les données web dans votre analyse."
+        elif web_data:
+            enhanced_prompt += "\n\nVeuillez intégrer les informations web collectées dans votre analyse."
         
         if 'groq' in clients:
             response = clients['groq'].chat.completions.create(
                 messages=[
                     {
                         "role": "system",
-                        "content": "Vous êtes un expert en urbanisme et développement urbain en Afrique. Analysez les documents fournis et intégrez leurs informations dans vos réponses. Rédigez du contenu professionnel, détaillé et précis sans emojis."
+                        "content": "Vous êtes un expert en urbanisme et développement urbain en Afrique. Analysez les documents fournis et les informations web collectées, puis intégrez-les dans vos réponses. Rédigez du contenu professionnel, détaillé et précis sans emojis. Citez vos sources quand vous utilisez des informations externes."
                     },
                     {
                         "role": "user",
@@ -259,7 +372,7 @@ def generate_enhanced_content_with_docs(prompt, clients, documents_content=None,
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "Vous êtes un expert en urbanisme et développement urbain en Afrique. Analysez les documents fournis et intégrez leurs informations dans vos réponses. Rédigez du contenu professionnel, détaillé et précis sans emojis."},
+                    {"role": "system", "content": "Vous êtes un expert en urbanisme et développement urbain en Afrique. Analysez les documents fournis et les informations web collectées, puis intégrez-les dans vos réponses. Rédigez du contenu professionnel, détaillé et précis sans emojis. Citez vos sources quand vous utilisez des informations externes."},
                     {"role": "user", "content": enhanced_prompt}
                 ],
                 max_tokens=max_tokens,
@@ -274,9 +387,13 @@ def generate_enhanced_content_with_docs(prompt, clients, documents_content=None,
         st.error(f"Erreur lors de la génération de contenu: {str(e)}")
         return f"Erreur de génération pour: {prompt[:50]}..."
 
+def generate_enhanced_content_with_docs(prompt, clients, documents_content=None, max_tokens=800):
+    """Génère du contenu enrichi avec gestion des limites (fonction de compatibilité)"""
+    return generate_enhanced_content_with_docs_and_web(prompt, clients, documents_content, None, max_tokens)
+
 def generate_enhanced_content(prompt, clients, max_tokens=800):
     """Génère du contenu enrichi avec gestion des limites (fonction de compatibilité)"""
-    return generate_enhanced_content_with_docs(prompt, clients, None, max_tokens)
+    return generate_enhanced_content_with_docs_and_web(prompt, clients, None, None, max_tokens)
 
 def create_demographic_chart(city_data):
     """Crée un graphique démographique"""
@@ -499,6 +616,9 @@ def diagnostic_tab():
         country = st.text_input("Pays", value="Mauritanie")
         region = st.text_input("Région/Province", value="Nouakchott")
         diagnostic_date = st.date_input("Date du diagnostic", value=datetime.now())
+        
+        # Option pour activer la recherche web
+        enable_Web Search = st.checkbox("🌐 Enrichir avec des données web", value=True, help="Collecte automatiquement des informations sur la ville depuis Wikipedia et autres sources")
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Données démographiques
@@ -627,6 +747,26 @@ def diagnostic_tab():
     if generate_report:
         with st.spinner("Génération du rapport en cours..."):
             
+            # Collecte des données web si activée
+            web_data = None
+            if enable_Web Search:
+                with st.spinner("🌐 Collecte des données web en cours..."):
+                    web_data = get_web_urban_data(city_name, country)
+                    
+                    # Afficher les informations web collectées
+                    if web_data and web_data.get('wikipedia_info', {}).get('found', False):
+                        wiki_info = web_data['wikipedia_info']
+                        st.markdown(f"""
+                        <div class="web-info-box">
+                            <h4>🌐 Informations Web Collectées</h4>
+                            <p><strong>Source Wikipedia:</strong> {wiki_info.get('title', 'N/A')}</p>
+                            <p>{wiki_info.get('summary', 'Aucun résumé disponible')[:200]}...</p>
+                            {f'<p><a href="{wiki_info.get("url")}" target="_blank">Voir la page complète</a></p>' if wiki_info.get('url') else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.info("🌐 Recherche web effectuée - Informations limitées trouvées")
+            
             # Traitement des documents uploadés
             documents_content = process_uploaded_documents(uploaded_files)
             
@@ -641,11 +781,13 @@ def diagnostic_tab():
                         st.write("---")
             
             # Affichage des informations de configuration
+            web_status = "✅ Activée" if enable_Web Search else "❌ Désactivée"
             st.info(f"""
             **Diagnostic configuré pour:** {city_name}, {country}  
             **Type:** {diagnostic_type}  
             **Population:** {population:,} habitants  
-            **Date:** {diagnostic_date.strftime('%d/%m/%Y')}
+            **Date:** {diagnostic_date.strftime('%d/%m/%Y')}  
+            **Recherche web:** {web_status}  
             **Documents analysés:** {len(documents_content) if documents_content else 0}
             """)
             
@@ -683,7 +825,7 @@ def diagnostic_tab():
             Style: professionnel, sans emojis, paragraphes structurés.
             """
             
-            executive_summary = generate_enhanced_content_with_docs(executive_prompt, clients, documents_content, 600)
+            executive_summary = generate_enhanced_content_with_docs_and_web(executive_prompt, clients, documents_content, web_data, 600)
             st.markdown(f'<div class="professional-text">{executive_summary}</div>', unsafe_allow_html=True)
             
             # 2. CONTEXTE DÉMOGRAPHIQUE ET SOCIAL
@@ -700,7 +842,7 @@ def diagnostic_tab():
             300 mots, style analytique professionnel.
             """
             
-            demographic_analysis = generate_enhanced_content_with_docs(demo_prompt, clients, documents_content, 500)
+            demographic_analysis = generate_enhanced_content_with_docs_and_web(demo_prompt, clients, documents_content, web_data, 500)
             st.markdown(f'<div class="professional-text">{demographic_analysis}</div>', unsafe_allow_html=True)
             
             # Graphique démographique
@@ -721,7 +863,7 @@ def diagnostic_tab():
             350 mots, données chiffrées, analyse approfondie.
             """
             
-            socio_analysis = generate_enhanced_content_with_docs(socio_prompt, clients, documents_content, 600)
+            socio_analysis = generate_enhanced_content_with_docs_and_web(socio_prompt, clients, documents_content, web_data, 600)
             st.markdown(f'<div class="professional-text">{socio_analysis}</div>', unsafe_allow_html=True)
             
             # Métriques socio-économiques
@@ -752,7 +894,7 @@ def diagnostic_tab():
             400 mots, analyse technique détaillée.
             """
             
-            housing_analysis = generate_enhanced_content_with_docs(housing_prompt, clients, documents_content, 700)
+            housing_analysis = generate_enhanced_content_with_docs_and_web(housing_prompt, clients, documents_content, web_data, 700)
             st.markdown(f'<div class="professional-text">{housing_analysis}</div>', unsafe_allow_html=True)
             
             # Graphique logement
@@ -774,7 +916,7 @@ def diagnostic_tab():
             450 mots, évaluation technique approfondie.
             """
             
-            infrastructure_analysis = generate_enhanced_content_with_docs(infra_prompt, clients, documents_content, 700)
+            infrastructure_analysis = generate_enhanced_content_with_docs_and_web(infra_prompt, clients, documents_content, web_data, 700)
             st.markdown(f'<div class="professional-text">{infrastructure_analysis}</div>', unsafe_allow_html=True)
             
             # Graphique infrastructures
@@ -798,7 +940,7 @@ def diagnostic_tab():
             400 mots, analyse critique et factuelle.
             """
             
-            challenges_analysis = generate_enhanced_content_with_docs(challenges_prompt, clients, documents_content, 700)
+            challenges_analysis = generate_enhanced_content_with_docs_and_web(challenges_prompt, clients, documents_content, web_data, 700)
             st.markdown(f'<div class="professional-text">{challenges_analysis}</div>', unsafe_allow_html=True)
             
             # 4.2 Opportunités de développement
@@ -815,7 +957,7 @@ def diagnostic_tab():
             350 mots, vision prospective et réaliste.
             """
             
-            opportunities_analysis = generate_enhanced_content_with_docs(opportunities_prompt, clients, documents_content, 600)
+            opportunities_analysis = generate_enhanced_content_with_docs_and_web(opportunities_prompt, clients, documents_content, web_data, 600)
             st.markdown(f'<div class="professional-text">{opportunities_analysis}</div>', unsafe_allow_html=True)
             
             # 5. RECOMMANDATIONS STRATÉGIQUES
@@ -835,7 +977,7 @@ def diagnostic_tab():
             300 mots, recommandations concrètes et réalisables.
             """
             
-            short_term_reco = generate_enhanced_content_with_docs(short_term_prompt, clients, documents_content, 500)
+            short_term_reco = generate_enhanced_content_with_docs_and_web(short_term_prompt, clients, documents_content, web_data, 500)
             st.markdown(f'<div class="professional-text">{short_term_reco}</div>', unsafe_allow_html=True)
             
             # 5.2 Stratégies à moyen terme (3-7 ans)
@@ -852,7 +994,7 @@ def diagnostic_tab():
             350 mots, approche stratégique et intégrée.
             """
             
-            medium_term_reco = generate_enhanced_content_with_docs(medium_term_prompt, clients, documents_content, 600)
+            medium_term_reco = generate_enhanced_content_with_docs_and_web(medium_term_prompt, clients, documents_content, web_data, 600)
             st.markdown(f'<div class="professional-text">{medium_term_reco}</div>', unsafe_allow_html=True)
             
             # 5.3 Vision à long terme (7-15 ans)
@@ -869,7 +1011,7 @@ def diagnostic_tab():
             300 mots, vision ambitieuse mais réaliste.
             """
             
-            long_term_reco = generate_enhanced_content_with_docs(long_term_prompt, clients, documents_content, 500)
+            long_term_reco = generate_enhanced_content_with_docs_and_web(long_term_prompt, clients, documents_content, web_data, 500)
             st.markdown(f'<div class="professional-text">{long_term_reco}</div>', unsafe_allow_html=True)
             
             # 6. GRAPHIQUES ET VISUALISATIONS
@@ -939,7 +1081,7 @@ def diagnostic_tab():
             400 mots, ton prospectif et mobilisateur.
             """
             
-            conclusion = generate_enhanced_content_with_docs(conclusion_prompt, clients, documents_content, 700)
+            conclusion = generate_enhanced_content_with_docs_and_web(conclusion_prompt, clients, documents_content, web_data, 700)
             st.markdown(f'<div class="professional-text">{conclusion}</div>', unsafe_allow_html=True)
             
             # Génération du PDF
@@ -969,6 +1111,10 @@ def diagnostic_tab():
             # Métadonnées du rapport
             st.markdown("---")
             st.markdown("### 📋 Métadonnées du rapport")
+            web_sources = ""
+            if web_data and web_data.get('wikipedia_info', {}).get('found', False):
+                web_sources = f"Wikipedia: {web_data['wikipedia_info'].get('title', 'N/A')}"
+            
             st.info(f"""
             **Ville analysée:** {city_name}, {country}  
             **Type de diagnostic:** {diagnostic_type}  
@@ -977,7 +1123,8 @@ def diagnostic_tab():
             **Taux de croissance:** {growth_rate}%  
             **Public cible:** {', '.join(target_audience) if target_audience else 'Non spécifié'}  
             **Documents analysés:** {len(documents_content) if documents_content else 0}  
-            **Plateforme:** UrbanAI Diagnostic Platform v2.0
+            **Sources web:** {web_sources if web_sources else 'Aucune'}  
+            **Plateforme:** UrbanAI Diagnostic Platform v2.1 (avec recherche web)
             """)
 
 def dashboard_tab():
@@ -1055,7 +1202,7 @@ def dashboard_tab():
         # Graphique en secteurs pour les groupes d'âge
         age_data = {
             'Groupe d\'âge': ['0-14 ans', '15-64 ans', '65+ ans'],
-            'Population (%)': [42.5, 54.3, 3.2]
+            'Population 'Population (%)': [42.5, 54.3, 3.2]
         }
         
         fig_age = px.pie(
@@ -1066,547 +1213,383 @@ def dashboard_tab():
         
         st.plotly_chart(fig_age, use_container_width=True)
     
-    # Graphique de tendance
-    st.subheader("📈 Évolution de la Population")
+    # Graphiques de tendances
+    st.subheader("📈 Tendances Urbaines")
     
-    years = list(range(2015, 2026))
-    population_data = [950000, 985000, 1020000, 1055000, 1090000, 1125000, 1160000, 1195000, 1230000, 1265000, 1300000]
+    col1, col2 = st.columns(2)
     
-    fig_trend = px.line(
-        x=years,
-        y=population_data,
-        title="Croissance Démographique 2015-2025",
-        labels={'x': 'Année', 'y': 'Population'}
-    )
+    with col1:
+        # Évolution de la population
+        years = list(range(2018, 2024))
+        population_evolution = [1050000, 1087500, 1126250, 1165656, 1206428, 1248723]
+        
+        fig_pop = px.line(
+            x=years,
+            y=population_evolution,
+            title="Évolution de la Population (2018-2023)",
+            labels={'x': 'Année', 'y': 'Population'}
+        )
+        fig_pop.update_traces(line_color='#2E86AB', line_width=3)
+        st.plotly_chart(fig_pop, use_container_width=True)
     
-    fig_trend.add_scatter(
-        x=[2022], 
-        y=[1200000], 
-        mode='markers', 
-        marker=dict(size=10, color='red'),
-        name='Situation actuelle'
-    )
+    with col2:
+        # Évolution des infrastructures
+        infra_years = ['2020', '2021', '2022', '2023']
+        water_evolution = [38, 41, 43, 45]
+        electricity_evolution = [35, 38, 40, 42]
+        
+        fig_infra = go.Figure()
+        fig_infra.add_trace(go.Scatter(x=infra_years, y=water_evolution, mode='lines+markers', name='Eau potable'))
+        fig_infra.add_trace(go.Scatter(x=infra_years, y=electricity_evolution, mode='lines+markers', name='Électricité'))
+        
+        fig_infra.update_layout(
+            title="Évolution de l'Accès aux Services (%)",
+            xaxis_title="Année",
+            yaxis_title="Taux d'accès (%)"
+        )
+        
+        st.plotly_chart(fig_infra, use_container_width=True)
     
-    st.plotly_chart(fig_trend, use_container_width=True)
+    # Carte de chaleur des quartiers
+    st.subheader("🗺️ Analyse par Quartier")
     
-    # Carte de chaleur des indicateurs
-    st.subheader("🗺️ Carte de Performance par Secteur")
-    
-    sectors = ['Centre', 'Nord', 'Sud', 'Est', 'Ouest']
-    indicators = ['Eau', 'Électricité', 'Assainissement', 'Routes', 'Santé', 'Éducation']
-    
-    # Données simulées pour la carte de chaleur
-    np.random.seed(42)
-    heatmap_data = np.random.randint(20, 80, size=(len(sectors), len(indicators)))
-    
-    fig_heatmap = px.imshow(
-        heatmap_data,
-        x=indicators,
-        y=sectors,
-        title="Performance par Secteur Géographique (%)",
-        color_continuous_scale="RdYlGn",
-        aspect="auto"
-    )
-    
-    st.plotly_chart(fig_heatmap, use_container_width=True)
-    
-    # Indicateurs de performance
-    st.subheader("🎯 Indicateurs de Performance Clés")
-    
-    kpi_data = {
-        'Indicateur': [
-            'Densité urbaine (hab/km²)',
-            'Espaces verts (m²/hab)',
-            'Déchets collectés (%)',
-            'Mortalité infantile (‰)',
-            'Taux d\'alphabétisation (%)',
-            'Accès aux soins (min)'
-        ],
-        'Valeur actuelle': [1200, 5, 60, 45, 65, 25],
-        'Objectif': [1000, 15, 90, 25, 85, 15],
-        'Statut': ['🔴', '🔴', '🟡', '🔴', '🟡', '🔴']
+    # Données simulées pour les quartiers
+    quartiers_data = {
+        'Quartier': ['Centre-ville', 'Tevragh-Zeina', 'Ksar', 'Sebkha', 'Arafat', 'Dar Naim', 'El Mina', 'Toujounine'],
+        'Population': [85000, 120000, 95000, 180000, 200000, 150000, 110000, 75000],
+        'Accès Eau (%)': [75, 65, 45, 35, 25, 40, 55, 30],
+        'Accès Électricité (%)': [80, 70, 50, 40, 30, 45, 60, 35],
+        'Densité (hab/km²)': [8500, 6200, 4800, 9200, 12000, 7500, 5800, 3200]
     }
     
-    df_kpi = pd.DataFrame(kpi_data)
-    st.dataframe(df_kpi, use_container_width=True)
+    df_quartiers = pd.DataFrame(quartiers_data)
     
-    # Analyse comparative
-    st.subheader("🌍 Comparaison Régionale")
+    # Tableau interactif
+    st.dataframe(df_quartiers, use_container_width=True)
     
-    cities_comparison = {
-        'Ville': ['Nouakchott', 'Dakar', 'Bamako', 'Niamey', 'Ouagadougou'],
-        'Population (M)': [1.2, 3.1, 2.4, 1.3, 2.2],
-        'PIB/hab (USD)': [1850, 2400, 1200, 800, 1100],
-        'Accès eau (%)': [45, 85, 60, 55, 70],
-        'Accès électricité (%)': [42, 90, 65, 45, 75]
-    }
-    
-    df_comparison = pd.DataFrame(cities_comparison)
-    
-    fig_comparison = px.scatter(
-        df_comparison,
-        x='PIB/hab (USD)',
-        y='Accès eau (%)',
-        size='Population (M)',
-        color='Ville',
-        title="Comparaison des Capitales Sahéliennes",
-        hover_data=['Accès électricité (%)']
+    # Graphique de corrélation
+    fig_scatter = px.scatter(
+        df_quartiers,
+        x='Accès Eau (%)',
+        y='Accès Électricité (%)',
+        size='Population',
+        hover_name='Quartier',
+        title="Corrélation Accès Eau vs Électricité par Quartier"
     )
     
-    st.plotly_chart(fig_comparison, use_container_width=True)
+    st.plotly_chart(fig_scatter, use_container_width=True)
 
-
-def chatbot_tab():
-    """Onglet Chatbot pour assistance IA"""
-    st.markdown('<div class="main-header">🤖 ASSISTANT IA URBAIN</div>', unsafe_allow_html=True)
+def analysis_tab():
+    """Onglet Analyse avec outils d'analyse avancés"""
+    st.markdown('<div class="main-header">🔍 ANALYSE AVANCÉE</div>', unsafe_allow_html=True)
     
     # Initialisation des clients IA
     clients = initialize_ai_clients()
     
-    # Interface du chatbot
-    st.markdown("""
-    ### 💬 Posez vos questions sur le développement urbain
+    # Sélection du type d'analyse
+    analysis_type = st.selectbox(
+        "Type d'analyse",
+        ["Analyse comparative", "Analyse prédictive", "Analyse de scénarios", "Analyse de risques", "Analyse économique"]
+    )
     
-    Cet assistant IA peut vous aider avec :
-    - **Analyse de données urbaines** 📊
-    - **Recommandations de politiques** 🏛️
-    - **Comparaisons entre villes** 🌍
-    - **Interprétation d'indicateurs** 📈
-    - **Stratégies de développement** 🚀
-    """)
-    
-    # Historique des conversations
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {
-                "role": "assistant", 
-                "content": "Bonjour ! Je suis votre assistant IA spécialisé en développement urbain. Comment puis-je vous aider aujourd'hui ?"
-            }
-        ]
-    
-    # Affichage des messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    
-    # Zone de saisie
-    if prompt := st.chat_input("Tapez votre question ici..."):
-        # Ajout du message utilisateur
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    if analysis_type == "Analyse comparative":
+        st.subheader("📊 Analyse Comparative Régionale")
         
-        # Génération de la réponse
-        with st.chat_message("assistant"):
-            with st.spinner("Réflexion en cours..."):
-                
-                # Contexte spécialisé pour l'urbanisme
-                system_prompt = """
-                Vous êtes un expert en développement urbain et planification urbaine, spécialisé dans les villes africaines.
-                Vous aidez les urbanistes, décideurs et chercheurs avec des analyses précises et des recommandations pratiques.
-                
-                Vos domaines d'expertise incluent :
-                - Planification urbaine et aménagement du territoire
-                - Infrastructures urbaines (eau, électricité, transport, assainissement)
-                - Habitat et logement social
-                - Économie urbaine et développement local
-                - Gouvernance urbaine et participation citoyenne
-                - Résilience climatique et développement durable
-                - Démographie urbaine et migration
-                - Services urbains de base
-                
-                Répondez de manière professionnelle, avec des données concrètes quand possible, et proposez des solutions pratiques.
-                """
-                
-                # CORRECTION ICI - Suppression du "full" en double
-                full_prompt = f"{system_prompt}\n\nQuestion de l'utilisateur: {prompt}"
-                
-                response = generate_enhanced_content(full_prompt, clients, 600)
-                st.markdown(response)
-                
-                # Ajout de la réponse à l'historique
-                st.session_state.messages.append({"role": "assistant", "content": response})
-    
-    # Suggestions de questions
-    st.markdown("---")
-    st.markdown("### 💡 Questions suggérées")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("Comment améliorer l'accès à l'eau potable ?"):
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "Comment améliorer l'accès à l'eau potable dans une ville en croissance rapide ?"
-            })
-            st.rerun()
+        # Données comparatives
+        cities_data = {
+            'Ville': ['Nouakchott', 'Dakar', 'Bamako', 'Niamey', 'Ouagadougou'],
+            'Population (M)': [1.2, 3.1, 2.4, 1.3, 2.2],
+            'PIB/hab (USD)': [1850, 2400, 900, 650, 750],
+            'Accès Eau (%)': [45, 85, 65, 55, 70],
+            'Accès Électricité (%)': [42, 90, 70, 60, 75],
+            'Taux Chômage (%)': [23, 18, 28, 25, 22]
+        }
         
-        if st.button("Stratégies de logement social"):
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "Quelles sont les meilleures stratégies de logement social pour les villes africaines ?"
-            })
-            st.rerun()
+        df_cities = pd.DataFrame(cities_data)
         
-        if st.button("Gestion des déchets urbains"):
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "Comment mettre en place un système efficace de gestion des déchets urbains ?"
-            })
-            st.rerun()
-    
-    with col2:
-        if st.button("Transport public durable"):
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "Comment développer un système de transport public durable et abordable ?"
-            })
-            st.rerun()
+        # Graphique radar comparatif
+        fig_radar_comp = go.Figure()
         
-        if st.button("Résilience climatique"):
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "Comment renforcer la résilience climatique des villes sahéliennes ?"
-            })
-            st.rerun()
+        categories = ['PIB/hab', 'Accès Eau', 'Accès Électricité', 'Emploi']
         
-        if st.button("Financement de projets urbains"):
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": "Quelles sont les sources de financement pour les projets de développement urbain ?"
-            })
-            st.rerun()
-    
-    # Bouton pour effacer l'historique
-    if st.button("🗑️ Effacer la conversation"):
-        st.session_state.messages = [
-            {
-                "role": "assistant", 
-                "content": "Bonjour ! Je suis votre assistant IA spécialisé en développement urbain. Comment puis-je vous aider aujourd'hui ?"
-            }
-        ]
-        st.rerun()
-def resources_tab():
-    """Onglet Ressources et Documentation"""
-    st.markdown('<div class="main-header">📚 RESSOURCES ET DOCUMENTATION</div>', unsafe_allow_html=True)
-    
-    # Section Guides méthodologiques
-    st.markdown('<div class="section-header">📖 Guides Méthodologiques</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        ### 🏗️ Diagnostic d'Infrastructure
+        for city in ['Nouakchott', 'Dakar', 'Bamako']:
+            city_data = df_cities[df_cities['Ville'] == city].iloc[0]
+            values = [
+                city_data['PIB/hab (USD)']/30,  # Normalisé
+                city_data['Accès Eau (%)'],
+                city_data['Accès Électricité (%)'],
+                100 - city_data['Taux Chômage (%)']  # Inversé pour que plus haut = mieux
+            ]
+            
+            fig_radar_comp.add_trace(go.Scatterpolar(
+                r=values,
+                theta=categories,
+                fill='toself',
+                name=city
+            ))
         
-        **Étapes clés :**
-        1. **Inventaire des équipements existants**
-           - Réseaux d'eau et d'assainissement
-           - Infrastructures électriques
-           - Réseau routier et transport
+        fig_radar_comp.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+            showlegend=True,
+            title="Comparaison Régionale - Indicateurs Clés"
+        )
         
-        2. **Évaluation de l'état technique**
-           - Taux de couverture par service
-           - Qualité et fiabilité des services
-           - Capacité et besoins futurs
+        st.plotly_chart(fig_radar_comp, use_container_width=True)
         
-        3. **Analyse des déficits**
-           - Zones non desservies
-           - Surcharge des équipements
-           - Vétusté des installations
+        # Analyse comparative générée par IA
+        comparative_prompt = f"""
+        Analysez la position de Nouakchott par rapport aux autres capitales sahéliennes:
+        - Nouakchott: 1.2M hab, 1850 USD/hab, 45% eau, 42% électricité, 23% chômage
+        - Dakar: 3.1M hab, 2400 USD/hab, 85% eau, 90% électricité, 18% chômage
+        - Bamako: 2.4M hab, 900 USD/hab, 65% eau, 70% électricité, 28% chômage
+        - Niamey: 1.3M hab, 650 USD/hab, 55% eau, 60% électricité, 25% chômage
+        - Ouagadougou: 2.2M hab, 750 USD/hab, 70% eau, 75% électricité, 22% chômage
         
-        4. **Priorisation des interventions**
-           - Urgence technique
-           - Impact sur la population
-           - Faisabilité financière
-        """)
-    
-    with col2:
-        st.markdown("""
-        ### 🏠 Analyse de l'Habitat
-        
-        **Méthodologie :**
-        1. **Typologie du parc de logements**
-           - Matériaux de construction
-           - Modes d'occupation
-           - Densité d'occupation
-        
-        2. **Évaluation de la qualité**
-           - Accès aux services de base
-           - Salubrité et sécurité
-           - Conformité aux normes
-        
-        3. **Cartographie des quartiers**
-           - Habitat planifié vs informel
-           - Zones à risque
-           - Potentiel de densification
-        
-        4. **Besoins en logements**
-           - Déficit quantitatif
-           - Déficit qualitatif
-           - Projections démographiques
-        """)
-    
-    # Section Indicateurs de référence
-    st.markdown('<div class="section-header">📊 Indicateurs de Référence</div>', unsafe_allow_html=True)
-    
-    # Tableau des indicateurs ODD 11
-    st.markdown("### 🎯 Objectifs de Développement Durable - ODD 11")
-    
-    odd11_data = {
-        'Indicateur': [
-            '11.1.1 - Population en bidonvilles',
-            '11.2.1 - Accès au transport public',
-            '11.3.1 - Consommation foncière',
-            '11.5.1 - Pertes dues aux catastrophes',
-            '11.6.1 - Déchets municipaux collectés',
-            '11.7.1 - Espaces verts publics'
-        ],
-        'Définition': [
-            'Proportion de la population urbaine vivant dans des bidonvilles',
-            'Proportion de la population ayant un accès pratique au transport public',
-            'Ratio entre le taux de consommation foncière et le taux de croissance démographique',
-            'Nombre de décès, personnes disparues et personnes directement touchées',
-            'Proportion de déchets municipaux solides collectés et gérés',
-            'Proportion moyenne d\'espaces verts publics dans les villes'
-        ],
-        'Objectif 2030': [
-            '< 20%',
-            '> 70%',
-            '< 1.5',
-            'Réduction significative',
-            '> 80%',
-            '> 15 m²/hab'
-        ]
-    }
-    
-    df_odd11 = pd.DataFrame(odd11_data)
-    st.dataframe(df_odd11, use_container_width=True)
-    
-    # Section Outils et modèles
-    st.markdown('<div class="section-header">🛠️ Outils et Modèles</div>', unsafe_allow_html=True)
-    
-    tab1, tab2, tab3 = st.tabs(["📋 Modèles de questionnaires", "📈 Calculateurs", "🗺️ Outils cartographiques"])
-    
-    with tab1:
-        st.markdown("""
-        ### 📝 Questionnaires Types
-        
-        #### Enquête Ménages - Accès aux Services
-        1. **Identification du ménage**
-           - Localisation (quartier, rue)
-           - Composition du ménage
-           - Revenus et activités
-        
-        2. **Accès à l'eau**
-           - Source principale d'approvisionnement
-           - Distance/temps d'accès
-           - Qualité perçue
-           - Coût mensuel
-        
-        3. **Accès à l'électricité**
-           - Type de raccordement
-           - Fiabilité du service
-           - Coût mensuel
-           - Sources alternatives
-        
-        4. **Logement**
-           - Type de construction
-           - Nombre de pièces
-           - Mode d'occupation
-           - Équipements disponibles
-        """)
-        
-        # Bouton de téléchargement du questionnaire
-        questionnaire_content = """
-        QUESTIONNAIRE DIAGNOSTIC URBAIN - ENQUÊTE MÉNAGES
-        
-        SECTION A - IDENTIFICATION
-        A1. Quartier : ________________
-        A2. Rue/Avenue : ________________
-        A3. Nombre de personnes dans le ménage : ____
-        A4. Revenus mensuels du ménage : ______ USD
-        
-        SECTION B - ACCÈS À L'EAU
-        B1. Source principale d'eau potable :
-        □ Robinet dans le logement
-        □ Robinet dans la cour
-        □ Borne fontaine publique
-        □ Puits
-        □ Autre : ________________
-        
-        B2. Temps pour aller chercher l'eau : ______ minutes
-        B3. Coût mensuel de l'eau : ______ USD
-        B4. Qualité de l'eau : □ Très bonne □ Bonne □ Moyenne □ Mauvaise
-        
-        SECTION C - ACCÈS À L'ÉLECTRICITÉ
-        C1. Type de raccordement :
-        □ Raccordement officiel
-        □ Raccordement informel
-        □ Pas de raccordement
-        
-        C2. Fréquence des coupures :
-        □ Jamais □ Rarement □ Souvent □ Très souvent
-        
-        C3. Coût mensuel de l'électricité : ______ USD
-        
-        SECTION D - LOGEMENT
-        D1. Type de construction :
-        □ Béton/Dur □ Semi-dur □ Traditionnel □ Précaire
-        
-        D2. Nombre de pièces : ______
-        D3. Mode d'occupation :
-        □ Propriétaire □ Locataire □ Logé gratuitement
-        
-        D4. Équipements disponibles :
-        □ Toilettes dans le logement
-        □ Cuisine équipée
-        □ Douche/salle de bain
+        Identifiez: forces, faiblesses, opportunités d'apprentissage, bonnes pratiques à adopter.
+        400 mots, analyse factuelle et recommandations.
         """
         
-        st.download_button(
-            label="📥 Télécharger le questionnaire complet",
-            data=questionnaire_content,
-            file_name="questionnaire_diagnostic_urbain.txt",
-            mime="text/plain"
+        comparative_analysis = generate_enhanced_content(comparative_prompt, clients, 600)
+        st.markdown(f'<div class="professional-text">{comparative_analysis}</div>', unsafe_allow_html=True)
+    
+    elif analysis_type == "Analyse prédictive":
+        st.subheader("🔮 Projections et Tendances")
+        
+        # Paramètres de projection
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            projection_years = st.slider("Horizon de projection (années)", 5, 20, 10)
+            growth_scenario = st.selectbox("Scénario de croissance", ["Conservateur", "Modéré", "Optimiste"])
+        
+        with col2:
+            investment_level = st.selectbox("Niveau d'investissement", ["Faible", "Moyen", "Élevé"])
+            policy_effectiveness = st.slider("Efficacité des politiques (%)", 0, 100, 70)
+        
+        # Calculs prédictifs
+        current_pop = 1200000
+        base_growth = 3.5
+        
+        if growth_scenario == "Conservateur":
+            growth_rate = base_growth * 0.8
+        elif growth_scenario == "Optimiste":
+            growth_rate = base_growth * 1.2
+        else:
+            growth_rate = base_growth
+        
+        # Projection démographique
+        years_proj = list(range(2024, 2024 + projection_years + 1))
+        pop_projection = [current_pop * (1 + growth_rate/100)**i for i in range(len(years_proj))]
+        
+        fig_proj = px.line(
+            x=years_proj,
+            y=pop_projection,
+            title=f"Projection Démographique - Scénario {growth_scenario}",
+            labels={'x': 'Année', 'y': 'Population'}
         )
+        
+        st.plotly_chart(fig_proj, use_container_width=True)
+        
+        # Analyse prédictive par IA
+        predictive_prompt = f"""
+        Analysez les projections pour Nouakchott sur {projection_years} ans:
+        - Scénario: {growth_scenario}
+        - Population projetée: {pop_projection[-1]:,.0f} habitants en {years_proj[-1]}
+        - Niveau d'investissement: {investment_level}
+        - Efficacité des politiques: {policy_effectiveness}%
+        
+        Évaluez: besoins futurs en infrastructures, défis de planification, opportunités de développement, risques potentiels.
+        350 mots, analyse prospective détaillée.
+        """
+        
+        predictive_analysis = generate_enhanced_content(predictive_prompt, clients, 600)
+        st.markdown(f'<div class="professional-text">{predictive_analysis}</div>', unsafe_allow_html=True)
     
-    with tab2:
-        st.markdown("### 🧮 Calculateurs Urbains")
+    elif analysis_type == "Analyse de scénarios":
+        st.subheader("🎭 Modélisation de Scénarios")
         
-        # Calculateur de densité
-        st.markdown("#### Calculateur de Densité Urbaine")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            calc_population = st.number_input("Population", value=100000, step=1000, key="calc_pop")
-            calc_area = st.number_input("Superficie (km²)", value=50.0, step=1.0, key="calc_area")
-        
-        with col2:
-            if calc_area > 0:
-                density = calc_population / calc_area
-                st.metric("Densité (hab/km²)", f"{density:,.0f}")
-                
-                if density < 500:
-                    st.success("Densité faible - Potentiel de densification")
-                elif density < 2000:
-                    st.info("Densité modérée - Équilibre acceptable")
-                elif density < 5000:
-                    st.warning("Densité élevée - Attention aux services")
-                else:
-                    st.error("Densité très élevée - Risque de surcharge")
-        
-        # Calculateur de besoins en logements
-        st.markdown("#### Calculateur de Besoins en Logements")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            current_housing = st.number_input("Logements existants", value=20000, step=100)
-            household_size = st.number_input("Taille moyenne des ménages", value=6.5, step=0.1)
-            growth_rate_housing = st.number_input("Taux de croissance (%)", value=3.5, step=0.1)
-        
-        with col2:
-            needed_housing = calc_population / household_size
-            housing_deficit = max(0, needed_housing - current_housing)
-            
-            st.metric("Logements nécessaires", f"{needed_housing:,.0f}")
-            st.metric("Déficit actuel", f"{housing_deficit:,.0f}")
-            
-            # Projection sur 10 ans
-            future_population = calc_population * (1 + growth_rate_housing/100)**10
-            future_housing_need = future_population / household_size
-            additional_housing = future_housing_need - needed_housing
-            
-            st.metric("Besoins additionnels (10 ans)", f"{additional_housing:,.0f}")
-    
-    with tab3:
-        st.markdown("""
-        ### 🗺️ Outils Cartographiques Recommandés
-        
-        #### Logiciels SIG Open Source
-        - **QGIS** : Système d'information géographique complet
-        - **OpenStreetMap** : Cartographie collaborative
-        - **PostGIS** : Extension spatiale pour PostgreSQL
-        
-        #### Données Géospatiales
-        - **Sentinel Hub** : Images satellites gratuites
-        - **Global Human Settlement Layer** : Données d'occupation du sol
-        - **OpenStreetMap** : Données vectorielles urbaines
-        
-        #### Plateformes en ligne
-        - **Google Earth Engine** : Analyse d'images satellites
-        - **ArcGIS Online** : Cartographie web
-        - **Mapbox** : Cartes interactives personnalisées
-        
-        #### Méthodologie de cartographie urbaine
-        1. **Collecte des données de base**
-           - Limites administratives
-           - Réseau routier
-           - Bâtiments et parcelles
-        
-        2. **Cartographie thématique**
-           - Densité de population
-           - Accès aux services
-           - Types d'habitat
-           - Risques naturels
-        
-        3. **Analyse spatiale**
-           - Zones de couverture des services
-           - Accessibilité et mobilité
-           - Croissance urbaine
-        """)
-    
-    # Section Bibliographie
-    st.markdown('<div class="section-header">📚 Bibliographie et Références</div>', unsafe_allow_html=True)
-    
-    references = [
-        {
-            "titre": "UN-Habitat - World Cities Report 2022",
-            "auteur": "Programme des Nations Unies pour les établissements humains",
-            "annee": "2022",
-            "description": "Rapport mondial sur l'état des villes et les tendances d'urbanisation"
-        },
-        {
-            "titre": "African Development Bank - Africa's Urbanization Dynamics",
-            "auteur": "Banque Africaine de Développement",
-            "annee": "2021",
-            "description": "Analyse des dynamiques d'urbanisation en Afrique"
-        },
-        {
-            "titre": "Cities Alliance - City Development Strategies",
-            "auteur": "Cities Alliance",
-            "annee": "2020",
-            "description": "Guide méthodologique pour les stratégies de développement urbain"
-        },
-        {
-            "titre": "OECD - Urban Policy Reviews: Africa",
-            "auteur": "Organisation de Coopération et de Développement Économiques",
-            "annee": "2021",
-            "description": "Revue des politiques urbaines en Afrique"
+        # Définition des scénarios
+        scenarios = {
+            "Statu Quo": {
+                "description": "Maintien des tendances actuelles",
+                "water_2030": 55,
+                "electricity_2030": 52,
+                "unemployment_2030": 22,
+                "gdp_growth": 2.5
+            },
+            "Réformes Modérées": {
+                "description": "Mise en œuvre de réformes graduelles",
+                "water_2030": 70,
+                "electricity_2030": 68,
+                "unemployment_2030": 18,
+                "gdp_growth": 4.0
+            },
+            "Transformation Accélérée": {
+                "description": "Investissements massifs et réformes profondes",
+                "water_2030": 85,
+                "electricity_2030": 80,
+                "unemployment_2030": 12,
+                "gdp_growth": 6.5
+            }
         }
-    ]
+        
+        # Visualisation des scénarios
+        scenario_names = list(scenarios.keys())
+        water_values = [scenarios[s]["water_2030"] for s in scenario_names]
+        electricity_values = [scenarios[s]["electricity_2030"] for s in scenario_names]
+        unemployment_values = [100 - scenarios[s]["unemployment_2030"] for s in scenario_names]  # Inversé
+        
+        fig_scenarios = go.Figure()
+        
+        fig_scenarios.add_trace(go.Bar(name='Accès Eau 2030', x=scenario_names, y=water_values))
+        fig_scenarios.add_trace(go.Bar(name='Accès Électricité 2030', x=scenario_names, y=electricity_values))
+        fig_scenarios.add_trace(go.Bar(name='Taux Emploi 2030', x=scenario_names, y=unemployment_values))
+        
+        fig_scenarios.update_layout(
+            title="Comparaison des Scénarios - Indicateurs 2030",
+            barmode='group',
+            yaxis_title="Pourcentage (%)"
+        )
+        
+        st.plotly_chart(fig_scenarios, use_container_width=True)
+        
+        # Sélection d'un scénario pour analyse détaillée
+        selected_scenario = st.selectbox("Sélectionner un scénario pour analyse détaillée", scenario_names)
+        
+        scenario_data = scenarios[selected_scenario]
+        
+        scenario_prompt = f"""
+        Analysez en détail le scénario "{selected_scenario}" pour Nouakchott:
+        - Description: {scenario_data['description']}
+        - Accès eau 2030: {scenario_data['water_2030']}%
+        - Accès électricité 2030: {scenario_data['electricity_2030']}%
+        - Taux de chômage 2030: {scenario_data['unemployment_2030']}%
+        - Croissance PIB: {scenario_data['gdp_growth']}%
+        
+        Détaillez: conditions de réalisation, investissements requis, risques, bénéfices attendus, faisabilité.
+        400 mots, analyse critique et réaliste.
+        """
+        
+        scenario_analysis = generate_enhanced_content(scenario_prompt, clients, 700)
+        st.markdown(f'<div class="professional-text">{scenario_analysis}</div>', unsafe_allow_html=True)
     
-    for ref in references:
-        st.markdown(f"""
-        **{ref['titre']}** ({ref['annee']})  
-        *{ref['auteur']}*  
-        {ref['description']}
-        """)
-        st.markdown("---")
+    elif analysis_type == "Analyse de risques":
+        st.subheader("⚠️ Évaluation des Risques Urbains")
+        
+        # Matrice des risques
+        risks_data = {
+            'Risque': ['Inondations', 'Sécheresse', 'Croissance démographique', 'Chômage des jeunes', 'Dégradation environnementale'],
+            'Probabilité': [0.8, 0.9, 0.95, 0.85, 0.7],
+            'Impact': [0.9, 0.7, 0.8, 0.75, 0.6],
+            'Niveau': ['Très Élevé', 'Élevé', 'Très Élevé', 'Élevé', 'Moyen']
+        }
+        
+        df_risks = pd.DataFrame(risks_data)
+        df_risks['Score'] = df_risks['Probabilité'] * df_risks['Impact']
+        
+        # Graphique de risques
+        fig_risk = px.scatter(
+            df_risks,
+            x='Probabilité',
+            y='Impact',
+            size='Score',
+            hover_name='Risque',
+            title="Matrice des Risques - Probabilité vs Impact",
+            color='Score',
+            color_continuous_scale='Reds'
+        )
+        
+        st.plotly_chart(fig_risk, use_container_width=True)
+        
+        # Tableau des risques
+        st.dataframe(df_risks, use_container_width=True)
+        
+        # Analyse des risques par IA
+        risk_prompt = f"""
+        Analysez les risques majeurs identifiés pour Nouakchott:
+        - Inondations: Probabilité 80%, Impact 90%
+        - Sécheresse: Probabilité 90%, Impact 70%
+        - Croissance démographique: Probabilité 95%, Impact 80%
+        - Chômage des jeunes: Probabilité 85%, Impact 75%
+        - Dégradation environnementale: Probabilité 70%, Impact 60%
+        
+        Pour chaque risque: causes, conséquences, mesures de prévention, stratégies d'atténuation.
+        450 mots, approche méthodique et préventive.
+        """
+        
+        risk_analysis = generate_enhanced_content(risk_prompt, clients, 800)
+        st.markdown(f'<div class="professional-text">{risk_analysis}</div>', unsafe_allow_html=True)
+    
+    elif analysis_type == "Analyse économique":
+        st.subheader("💰 Analyse Économique Approfondie")
+        
+        # Indicateurs économiques
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("PIB urbain", "2.2 Mrd USD", "4.2%")
+            st.metric("PIB par habitant", "1,850 USD", "0.7%")
+        
+        with col2:
+            st.metric("Taux d'investissement", "18%", "2.1%")
+            st.metric("Balance commerciale", "-450M USD", "-12%")
+        
+        with col3:
+            st.metric("Recettes fiscales", "180M USD", "8.5%")
+            st.metric("Dette municipale", "95M USD", "15%")
+        
+        # Répartition sectorielle
+        sectors_data = {
+            'Secteur': ['Services', 'Commerce', 'Pêche', 'Industrie', 'Agriculture', 'BTP'],
+            'Contribution PIB (%)': [35, 25, 15, 12, 8, 5],
+            'Emplois (milliers)': [180, 150, 80, 45, 35, 25]
+        }
+        
+        df_sectors = pd.DataFrame(sectors_data)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fig_pib = px.pie(
+                df_sectors,
+                values='Contribution PIB (%)',
+                names='Secteur',
+                title="Contribution au PIB par Secteur"
+            )
+            st.plotly_chart(fig_pib, use_container_width=True)
+        
+        with col2:
+            fig_emploi = px.bar(
+                df_sectors,
+                x='Secteur',
+                y='Emplois (milliers)',
+                title="Répartition de l'Emploi par Secteur"
+            )
+            st.plotly_chart(fig_emploi, use_container_width=True)
+        
+        # Analyse économique par IA
+        economic_prompt = f"""
+        Analysez la situation économique de Nouakchott:
+        - PIB urbain: 2.2 Mrd USD, croissance 4.2%
+        - PIB/habitant: 1,850 USD
+        - Secteurs dominants: Services (35%), Commerce (25%), Pêche (15%)
+        - Taux d'investissement: 18%
+        - Chômage: 23%, économie informelle: 70%
+        - Balance commerciale: -450M USD
+        
+        Évaluez: dynamiques économiques, potentiel de croissance, défis structurels, opportunités de diversification.
+        400 mots, analyse économique rigoureuse.
+        """
+        
+        economic_analysis = generate_enhanced_content(economic_prompt, clients, 700)
+        st.markdown(f'<div class="professional-text">{economic_analysis}</div>', unsafe_allow_html=True)
 
 def main():
     """Fonction principale de l'application"""
-    
-    # Header de l'application
     create_header()
     
     # Navigation par onglets
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🏙️ Diagnostic", 
-        "📊 Dashboard", 
-        "🤖 Assistant IA", 
-        "📚 Ressources"
-    ])
+    tab1, tab2, tab3 = st.tabs(["🏙️ Diagnostic", "📊 Dashboard", "🔍 Analyse"])
     
     with tab1:
         diagnostic_tab()
@@ -1615,18 +1598,15 @@ def main():
         dashboard_tab()
     
     with tab3:
-        chatbot_tab()
-    
-    with tab4:
-        resources_tab()
+        analysis_tab()
     
     # Footer
     st.markdown("---")
     st.markdown("""
-    <div style="text-align: center; color: #666; padding: 2rem;">
-        <p><strong>AfricanCities IA Services</strong> - Centre of Urban Systems, UM6P</p>
-        <p>Plateforme de diagnostic urbain intelligent pour les villes africaines</p>
-        <p><em>Version 2.0 - Développé avec Streamlit et IA générative</em></p>
+    <div style="text-align: center; color: #666; padding: 20px;">
+        <p><strong>AfricanCities IA Services</strong> - Plateforme de diagnostic urbain intelligent</p>
+        <p>Développé par le Centre of Urban Systems - UM6P | Version 2.1 avec recherche web automatique</p>
+        <p>🌐 Enrichi par des données web en temps réel | 📄 Analyse de documents techniques | 🤖 IA avancée</p>
     </div>
     """, unsafe_allow_html=True)
 
