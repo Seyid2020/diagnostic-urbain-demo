@@ -1191,7 +1191,7 @@ def diagnostic_tab():
             # 5.3 Vision à long terme (7-15 ans)
             st.markdown('<div class="subsection-header">5.3 Vision à long terme (7-15 ans)</div>', unsafe_allow_html=True)
             
-            long_term_prompt = f"""
+           long_term_prompt = f"""
             Esquissez une vision à long terme pour {city_name}:
             - Transformation en ville intelligente et durable
             - Hub économique régional basé sur {',long_term_prompt = f"""}
