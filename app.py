@@ -1194,7 +1194,7 @@ def diagnostic_tab():
             long_term_prompt = f"""
             Esquissez une vision à long terme pour {city_name}:
             - Transformation en ville intelligente et durable
-            - Hub économique régional basé sur {',long_term_prompt = f"""
+            - Hub économique régional basé sur {',long_term_prompt = f"""}
             Esquissez une vision à long terme pour {city_name}:
             - Transformation en ville intelligente et durable
             - Hub économique régional basé sur {', '.join(main_sectors) if main_sectors else 'les secteurs porteurs'}
