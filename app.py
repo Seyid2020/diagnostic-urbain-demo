@@ -1192,17 +1192,14 @@ def diagnostic_tab():
             st.markdown('<div class="subsection-header">5.3 Vision à long terme (7-15 ans)</div>', unsafe_allow_html=True)
             
            long_term_prompt = f"""
-            Esquissez une vision à long terme pour {city_name}:
-            - Transformation en ville intelligente et durable
-            - Hub économique régional basé sur {',long_term_prompt = f"""}
-            Esquissez une vision à long terme pour {city_name}:
-            - Transformation en ville intelligente et durable
-            - Hub économique régional basé sur {', '.join(main_sectors) if main_sectors else 'les secteurs porteurs'}
-            - Inclusion sociale et égalité d'accès aux services
-            - Adaptation au changement climatique et neutralité carbone
-            - Gouvernance participative et innovation numérique
-            300 mots, style prospectif et inspirant.
-            """
+Esquissez une vision à long terme pour {city_name}:
+- Transformation en ville intelligente et durable
+- Hub économique régional basé sur {', '.join(main_sectors) if main_sectors else 'les secteurs porteurs'}
+- Inclusion sociale et égalité d'accès aux services
+- Adaptation au changement climatique et neutralité carbone
+- Gouvernance participative et innovation numérique
+300 mots, style prospectif et inspirant.
+"""
             
             long_term_reco = generate_enhanced_content_with_docs_and_web(long_term_prompt, clients, documents_content, web_data, 500)
             st.markdown(f'<div class="professional-text">{long_term_reco}</div>', unsafe_allow_html=True)
