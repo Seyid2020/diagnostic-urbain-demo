@@ -749,7 +749,7 @@ def diagnostic_tab():
             
             # Collecte des données web si activée
             web_data = None
-            if enable_Web Search:
+            if enable_Web_Search:
                 with st.spinner("🌐 Collecte des données web en cours..."):
                     web_data = get_web_urban_data(city_name, country)
                     
