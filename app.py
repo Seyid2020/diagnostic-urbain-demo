@@ -341,7 +341,7 @@ def process_uploaded_documents(uploaded_files):
     
     return documents_content
 
-def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_content=None, web_data=None, max_tokens=800, include_Web Search=False):
+def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_content=None, web_data=None, max_tokens=800, include_Web_Search=False):
     """Génère du contenu enrichi en incluant les documents uploadés ET les données web"""
     try:
         # Construire le prompt avec les documents et les données web
@@ -353,7 +353,7 @@ def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_conte
             enhanced_prompt = prompt + web_info
         
         # Recherche web si nécessaire
-        if include_Web Search:
+        if include_Web_Search:
             search_query = prompt.split(":")[-1].strip() if ":" in prompt else prompt
             web_results = search_web_info(search_query)
             
@@ -392,7 +392,7 @@ def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_conte
             content = response.choices[0].message.content
             
             # Ajouter la source si recherche web
-            if include_Web Search and web_results:
+            if include_Web_Search and web_results:
                 content += f"\n\n📍 *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
             
             return content
@@ -409,7 +409,7 @@ def generate_enhanced_content_with_docs_and_web(prompt, clients, documents_conte
             )
             content = response.choices[0].message.content
             
-            if include_Web Search and web_results:
+            if include_Web_Search and web_results:
                 content += f"\n\n📍 *Sources web consultées: {', '.join([r['url'] for r in web_results])}"
             
             return content
@@ -722,7 +722,7 @@ def chatbot_tab():
                     Répondez de manière concise et pratique. Si vous ne connaissez pas une information précise, dites-le clairement.
                     """
                     
-                    response = generate_enhanced_content_with_docs_and_web(full_prompt, clients, None, None, 200, include_Web Search=needs_Web Search)
+                    response = generate_enhanced_content_with_docs_and_web(full_prompt, clients, None, None, 200, include_Web_Search=needs_Web Search)
                 
                 st.markdown(response)
                 
