@@ -167,13 +167,14 @@ def create_header():
     st.markdown("""
     <div class="header-container">
         <div class="logo-container">
-            
-       
+            <!-- Ici tu peux ajouter ton logo si besoin -->
+        </div>
         <div class="main-title">AfricanCities IA Services</div>
         <div class="subtitle">Diagnostiquer, comprendre, transformer votre ville</div>
         <div class="institution">Centre of Urban Systems - UM6P</div>
     </div>
     """, unsafe_allow_html=True)
+
 
 def initialize_ai_clients():
     """Initialise les clients IA"""
