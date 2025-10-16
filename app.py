@@ -168,7 +168,7 @@ def create_header():
     <div class="header-container">
         <div class="logo-container">
             
-        </div>
+       
         <div class="main-title">AfricanCities IA Services</div>
         <div class="subtitle">Diagnostiquer, comprendre, transformer votre ville</div>
         <div class="institution">Centre of Urban Systems - UM6P</div>
