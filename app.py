@@ -180,25 +180,23 @@ import streamlit as st
 import base64
 import os
 
+import streamlit as st
+from PIL import Image
+import os
+
 def create_header():
     """Crée le header avec logo et titres"""
-    logo_html = ""
     logo_path = "logo-cus.png"
     
+    # Afficher le logo directement avec Streamlit (pas en HTML)
     if os.path.exists(logo_path):
-        # Lecture et encodage correct du logo
-        with open(logo_path, "rb") as f:
-            logo_base64 = base64.b64encode(f.read()).decode()
-        
-        logo_html = f'''
-            <div class="logo-container">
-                <img src="data:image/png;base64,{logo_base64}" alt="CUS Logo" style="height:80px; margin-bottom:10px;">
-            </div>
-        '''
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.image(logo_path, width=200)
     
-    st.markdown(f"""
+    # Le reste en HTML
+    st.markdown("""
     <div class="header-container">
-        {logo_html}
         <div class="main-title">AfricanCities IA Services</div>
         <div class="subtitle">Diagnostiquer, comprendre, transformer votre ville</div>
         <div class="institution">Centre of Urban Systems - UM6P</div>
