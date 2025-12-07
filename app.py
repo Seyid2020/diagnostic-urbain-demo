@@ -176,13 +176,20 @@ def get_base64_image(image_path):
         data = f.read()
     return base64.b64encode(data).decode("utf-8")
 
+import streamlit as st
+import base64
+import os
+
 def create_header():
     """Crée le header avec logo et titres"""
     logo_html = ""
     logo_path = "logo-cus.png"
     
     if os.path.exists(logo_path):
-        logo_base64 = get_base64_image(logo_path)
+        # Lecture et encodage correct du logo
+        with open(logo_path, "rb") as f:
+            logo_base64 = base64.b64encode(f.read()).decode()
+        
         logo_html = f'''
             <div class="logo-container">
                 <img src="data:image/png;base64,{logo_base64}" alt="CUS Logo" style="height:80px; margin-bottom:10px;">
